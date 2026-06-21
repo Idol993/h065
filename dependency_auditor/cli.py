@@ -186,7 +186,10 @@ def audit(project_dir, include_dev, config, no_vuln, no_license, no_circular, no
 @click.argument("project_dir", default=".")
 @click.option("--include-dev", is_flag=True, help="Include dev dependencies")
 @click.option("--config", default=None, help="Path to config YAML file")
-def licenses(project_dir, include_dev, config):
+@click.option("--html", is_flag=True, help="Generate HTML report")
+@click.option("--json", "json_output", is_flag=True, help="Generate JSON report")
+@click.option("--output-dir", default=".", help="Output directory for reports")
+def licenses(project_dir, include_dev, config, html, json_output, output_dir):
     """Analyze dependency licenses for copyleft risks."""
     cfg = ConfigLoader(config)
     deps = _parse_all(project_dir, include_dev)
@@ -196,15 +199,25 @@ def licenses(project_dir, include_dev, config):
 
     console.print("[bold cyan]▸ Fetching license info from OSS Index...[/bold cyan]")
     vuln_analyzer = VulnerabilityAnalyzer(cfg)
-    vuln_analyzer.analyze(deps)
+    vuln_results = vuln_analyzer.analyze(deps)
 
     analyzer = LicenseAnalyzer()
-    results = analyzer.analyze(deps)
+    license_results = analyzer.analyze(deps)
 
     reporter = TerminalReporter(console)
-    reporter.report_licenses(results)
+    reporter.report_licenses(license_results)
 
-    has_copyleft = any(r.has_copyleft for r in results)
+    if html:
+        html_reporter = HtmlReporter()
+        path = html_reporter.export(vuln_results, license_results, [], [], None, output_dir)
+        console.print(f"\n[green]HTML report saved: {path}[/green]")
+
+    if json_output:
+        json_exporter = JsonExporter()
+        path = json_exporter.export(vuln_results, license_results, [], [], output_dir)
+        console.print(f"[green]JSON report saved: {path}[/green]")
+
+    has_copyleft = any(r.has_copyleft for r in license_results)
     if has_copyleft and cfg.fail_on_copyleft_license:
         sys.exit(3)
 

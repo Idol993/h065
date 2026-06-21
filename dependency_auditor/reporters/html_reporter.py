@@ -56,12 +56,13 @@ class HtmlReporter:
 
         outdated_data = []
         for r in outdated_results:
-            outdated_data.append({
-                "package": r.dependency.name,
-                "current": r.current_version,
-                "latest": r.latest_version,
-                "ecosystem": r.ecosystem,
-            })
+            if r.is_outdated:
+                outdated_data.append({
+                    "package": r.dependency.name,
+                    "current": r.current_version,
+                    "latest": r.latest_version,
+                    "ecosystem": r.ecosystem,
+                })
 
         all_deps = self._collect_deps(vuln_results, license_results, outdated_results)
         graph_data = self._build_graph_data(all_deps, dep_tree)
@@ -79,10 +80,11 @@ class HtmlReporter:
             "low": vuln_by_severity.get("low", 0),
             "total_licenses": len(license_data),
             "copyleft_licenses": sum(1 for lr in license_results if lr.has_copyleft),
+            "copyleft": sum(1 for lr in license_results if lr.has_copyleft),
             "total_circular_dependencies": len(circular_data),
-            "total_outdated": sum(
-                1 for r in outdated_results if r.is_outdated
-            ),
+            "circular": len(circular_data),
+            "total_outdated": len(outdated_data),
+            "outdated": len(outdated_data),
         }
 
         template = self.env.get_template("report.html")

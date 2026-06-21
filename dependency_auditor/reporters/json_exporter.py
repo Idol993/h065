@@ -39,6 +39,7 @@ class JsonExporter:
                 "is_outdated": r.is_outdated,
             }
             for r in outdated_results
+            if r.is_outdated
         ]
 
         timestamp = datetime.utcnow().strftime("%Y%m%dT%H%M%SZ")
@@ -49,7 +50,7 @@ class JsonExporter:
             vuln_by_severity[sev] = vuln_by_severity.get(sev, 0) + 1
 
         copyleft_pkg_count = sum(1 for lr in license_results if lr.has_copyleft)
-        outdated_count = sum(1 for r in outdated_results if r.is_outdated)
+        outdated_count = len(outdated)
 
         report = {
             "vulnerabilities": vulnerabilities,

@@ -146,13 +146,9 @@ class LicenseAnalyzer:
 
     def _extract_licenses(self, dep: Dependency) -> list[LicenseRisk]:
         license_strs: list[str] = []
-        
-        lock_licenses = getattr(dep, "_lock_licenses", None)
-        if lock_licenses and isinstance(lock_licenses, list):
-            license_strs.extend(lock_licenses)
 
         oss_licenses = getattr(dep, "_oss_licenses", None)
-        if not license_strs and oss_licenses and isinstance(oss_licenses, list):
+        if oss_licenses and isinstance(oss_licenses, list):
             for entry in oss_licenses:
                 if isinstance(entry, dict):
                     lid = entry.get("licenseId") or entry.get("id")
@@ -160,6 +156,11 @@ class LicenseAnalyzer:
                         license_strs.append(str(lid))
                 elif isinstance(entry, str):
                     license_strs.append(entry)
+
+        if not license_strs:
+            lock_licenses = getattr(dep, "_lock_licenses", None)
+            if lock_licenses and isinstance(lock_licenses, list):
+                license_strs.extend(lock_licenses)
 
         if not license_strs:
             license_strs = self._heuristic_licenses(dep)

@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dependency Audit Report</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #1a1a2e; color: #e0e0e0; }
+  .container { max-width: 1400px; margin: 0 auto; padding: 20px; }
+  h1 { text-align: center; font-size: 2em; margin-bottom: 10px; color: #00d4ff; }
+  .timestamp { text-align: center; color: #888; margin-bottom: 30px; font-size: 0.9em; }
+
+  .summary-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 30px; }
+  .card { background: #16213e; border-radius: 10px; padding: 20px; text-align: center; border: 1px solid #0f3460; }
+  .card .count { font-size: 2.5em; font-weight: bold; }
+  .card .label { font-size: 0.9em; color: #aaa; margin-top: 5px; }
+  .card.critical .count { color: #800080; }
+  .card.high .count { color: #ff0000; }
+  .card.medium .count { color: #ffa500; }
+  .card.low .count { color: #ffff00; }
+  .card.copyleft .count { color: #ff4444; }
+  .card.circular .count { color: #ff6600; }
+  .card.outdated .count { color: #4488ff; }
+
+  .section { background: #16213e; border-radius: 10px; padding: 20px; margin-bottom: 20px; border: 1px solid #0f3460; }
+  .section h2 { color: #00d4ff; margin-bottom: 15px; font-size: 1.3em; border-bottom: 1px solid #0f3460; padding-bottom: 10px; }
+
+  table { width: 100%; border-collapse: collapse; }
+  th { background: #0f3460; color: #00d4ff; padding: 12px 10px; text-align: left; font-size: 0.85em; text-transform: uppercase; }
+  td { padding: 10px; border-bottom: 1px solid #1a1a3e; font-size: 0.9em; }
+  tr:hover { background: #1a2744; }
+
+  .severity-critical { color: #800080; font-weight: bold; }
+  .severity-high { color: #ff0000; font-weight: bold; }
+  .severity-medium { color: #ffa500; font-weight: bold; }
+  .severity-low { color: #ffff00; }
+  .risk-high { color: #ff0000; font-weight: bold; }
+  .risk-medium { color: #ffa500; }
+  .risk-low { color: #00cc00; }
+  .yes { color: #ff4444; }
+  .no { color: #00cc00; }
+
+  .graph-container { width: 100%; height: 600px; border: 1px solid #0f3460; border-radius: 10px; overflow: hidden; position: relative; }
+  .tooltip { position: absolute; background: #0f3460; border: 1px solid #00d4ff; border-radius: 5px; padding: 10px; font-size: 0.8em; pointer-events: none; display: none; z-index: 100; max-width: 300px; }
+
+  .cycle-path { background: #2a1a1a; border-left: 3px solid #ff0000; padding: 10px; margin: 5px 0; font-family: monospace; font-size: 0.9em; }
+
+  .tabs { display: flex; gap: 0; margin-bottom: 20px; }
+  .tab { padding: 10px 20px; background: #0f3460; color: #888; cursor: pointer; border: 1px solid #0f3460; border-bottom: none; border-radius: 5px 5px 0 0; }
+  .tab.active { background: #16213e; color: #00d4ff; border-color: #0f3460; }
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>🔍 Dependency Audit Report</h1>
+  <p class="timestamp">Generated: 20260621T173418Z</p>
+
+  <div class="summary-cards">
+    <div class="card critical"><div class="count">0</div><div class="label">Critical Vulnerabilities</div></div>
+    <div class="card high"><div class="count">0</div><div class="label">High Vulnerabilities</div></div>
+    <div class="card medium"><div class="count">0</div><div class="label">Medium Vulnerabilities</div></div>
+    <div class="card low"><div class="count">0</div><div class="label">Low Vulnerabilities</div></div>
+    <div class="card copyleft"><div class="count">0</div><div class="label">Copyleft Licenses</div></div>
+    <div class="card circular"><div class="count">0</div><div class="label">Circular Dependencies</div></div>
+    <div class="card outdated"><div class="count">0</div><div class="label">Outdated Packages</div></div>
+  </div>
+
+  <div class="tabs">
+    <div class="tab active" onclick="switchTab('vulnerabilities')">Vulnerabilities</div>
+    <div class="tab" onclick="switchTab('licenses')">Licenses</div>
+    <div class="tab" onclick="switchTab('circular')">Circular Deps</div>
+    <div class="tab" onclick="switchTab('outdated')">Outdated</div>
+    <div class="tab" onclick="switchTab('graph')">Dependency Graph</div>
+  </div>
+
+  <div id="vulnerabilities" class="tab-content active">
+    <div class="section">
+      <h2>Vulnerabilities (0)</h2>
+      
+      <p style="color:#00cc00; text-align:center; padding:20px;">✓ No vulnerabilities found</p>
+      
+    </div>
+  </div>
+
+  <div id="licenses" class="tab-content">
+    <div class="section">
+      <h2>License Analysis (4)</h2>
+      
+      <table>
+        <thead><tr><th>Package</th><th>License</th><th>Risk Level</th><th>Copyleft</th></tr></thead>
+        <tbody>
+        
+          <tr>
+            <td>package-a</td>
+            <td>MIT</td>
+            <td class="risk-low">LOW</td>
+            <td class="no">✓ NO</td>
+          </tr>
+        
+          <tr>
+            <td>package-b</td>
+            <td>MIT</td>
+            <td class="risk-low">LOW</td>
+            <td class="no">✓ NO</td>
+          </tr>
+        
+          <tr>
+            <td>package-c</td>
+            <td>MIT</td>
+            <td class="risk-low">LOW</td>
+            <td class="no">✓ NO</td>
+          </tr>
+        
+          <tr>
+            <td>package-d</td>
+            <td>MIT</td>
+            <td class="risk-low">LOW</td>
+            <td class="no">✓ NO</td>
+          </tr>
+        
+        </tbody>
+      </table>
+      
+    </div>
+  </div>
+
+  <div id="circular" class="tab-content">
+    <div class="section">
+      <h2>Circular Dependencies (0)</h2>
+      
+      <p style="color:#00cc00; text-align:center; padding:20px;">✓ No circular dependencies found</p>
+      
+    </div>
+  </div>
+
+  <div id="outdated" class="tab-content">
+    <div class="section">
+      <h2>Outdated Packages (0)</h2>
+      
+      <p style="color:#00cc00; text-align:center; padding:20px;">✓ All packages are up to date</p>
+      
+    </div>
+  </div>
+
+  <div id="graph" class="tab-content">
+    <div class="section">
+      <h2>Dependency Graph</h2>
+      <div class="graph-container" id="graph-container">
+        <div class="tooltip" id="tooltip"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<script>
+(function() {
+  var graphData = "{\"nodes\": [{\"id\": \"package-a\", \"group\": \"npm\", \"vulnerabilities\": 0, \"risk\": \"low\"}, {\"id\": \"package-b\", \"group\": \"npm\", \"vulnerabilities\": 0, \"risk\": \"low\"}, {\"id\": \"package-c\", \"group\": \"npm\", \"vulnerabilities\": 0, \"risk\": \"low\"}, {\"id\": \"package-d\", \"group\": \"npm\", \"vulnerabilities\": 0, \"risk\": \"low\"}], \"links\": []}";
+  var nodes = graphData.nodes || [];
+  var links = graphData.links || [];
+
+  if (nodes.length === 0) return;
+
+  var container = document.getElementById('graph-container');
+  var width = container.clientWidth;
+  var height = container.clientHeight;
+
+  var svg = d3.select('#graph-container')
+    .append('svg')
+    .attr('width', width)
+    .attr('height', height);
+
+  var tooltip = document.getElementById('tooltip');
+
+  var colorMap = { pypi: '#3776ab', npm: '#cb3837', maven: '#b07219' };
+  var riskColorMap = { high: '#ff0000', medium: '#ffa500', low: '#00cc00' };
+
+  var simulation = d3.forceSimulation(nodes)
+    .force('link', d3.forceLink(links).id(d => d.id).distance(80))
+    .force('charge', d3.forceManyBody().strength(-200))
+    .force('center', d3.forceCenter(width / 2, height / 2))
+    .force('collision', d3.forceCollide().radius(25));
+
+  var link = svg.append('g')
+    .selectAll('line')
+    .data(links)
+    .enter().append('line')
+    .attr('stroke', '#444')
+    .attr('stroke-width', 1.5);
+
+  var node = svg.append('g')
+    .selectAll('circle')
+    .data(nodes)
+    .enter().append('circle')
+    .attr('r', d => Math.max(8, 5 + (d.vulnerabilities || 0) * 3))
+    .attr('fill', d => colorMap[d.group] || '#888')
+    .attr('stroke', d => riskColorMap[d.risk] || '#666')
+    .attr('stroke-width', d => d.vulnerabilities > 0 ? 3 : 1)
+    .on('mouseover', function(event, d) {
+      tooltip.style.display = 'block';
+      tooltip.innerHTML = '<strong>' + d.id + '</strong><br>Ecosystem: ' + d.group +
+        '<br>Vulnerabilities: ' + (d.vulnerabilities || 0) +
+        '<br>Risk: ' + (d.risk || 'none');
+      var rect = container.getBoundingClientRect();
+      tooltip.style.left = (event.clientX - rect.left + 10) + 'px';
+      tooltip.style.top = (event.clientY - rect.top + 10) + 'px';
+    })
+    .on('mouseout', function() {
+      tooltip.style.display = 'none';
+    })
+    .call(d3.drag()
+      .on('start', dragstarted)
+      .on('drag', dragged)
+      .on('end', dragended));
+
+  var label = svg.append('g')
+    .selectAll('text')
+    .data(nodes)
+    .enter().append('text')
+    .text(d => d.id)
+    .attr('font-size', '10px')
+    .attr('fill', '#ccc')
+    .attr('dx', 12)
+    .attr('dy', 4);
+
+  simulation.on('tick', function() {
+    link.attr('x1', d => d.source.x).attr('y1', d => d.source.y)
+        .attr('x2', d => d.target.x).attr('y2', d => d.target.y);
+    node.attr('cx', d => d.x).attr('cy', d => d.y);
+    label.attr('x', d => d.x).attr('y', d => d.y);
+  });
+
+  function dragstarted(event) { if (!event.active) simulation.alphaTarget(0.3).restart(); event.subject.fx = event.subject.x; event.subject.fy = event.subject.y; }
+  function dragged(event) { event.subject.fx = event.x; event.subject.fy = event.y; }
+  function dragended(event) { if (!event.active) simulation.alphaTarget(0); event.subject.fx = null; event.subject.fy = null; }
+})();
+
+function switchTab(tabId) {
+  document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(el => el.classList.remove('active'));
+  document.getElementById(tabId).classList.add('active');
+  event.target.classList.add('active');
+}
+</script>
+</body>
+</html>
