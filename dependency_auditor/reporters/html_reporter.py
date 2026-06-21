@@ -78,7 +78,7 @@ class HtmlReporter:
             "medium": vuln_by_severity.get("medium", 0),
             "low": vuln_by_severity.get("low", 0),
             "total_licenses": len(license_data),
-            "copyleft_licenses": sum(1 for ld in license_data if ld["is_copyleft"]),
+            "copyleft_licenses": sum(1 for lr in license_results if lr.has_copyleft),
             "total_circular_dependencies": len(circular_data),
             "total_outdated": sum(
                 1 for r in outdated_results if r.is_outdated

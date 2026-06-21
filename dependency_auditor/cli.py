@@ -194,6 +194,10 @@ def licenses(project_dir, include_dev, config):
         console.print("[yellow]No dependencies found.[/yellow]")
         sys.exit(0)
 
+    console.print("[bold cyan]▸ Fetching license info from OSS Index...[/bold cyan]")
+    vuln_analyzer = VulnerabilityAnalyzer(cfg)
+    vuln_analyzer.analyze(deps)
+
     analyzer = LicenseAnalyzer()
     results = analyzer.analyze(deps)
 

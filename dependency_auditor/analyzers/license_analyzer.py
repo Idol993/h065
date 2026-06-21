@@ -5,11 +5,14 @@ from dependency_auditor.parsers.python_parser import Dependency
 HIGH_RISK = frozenset({
     "GPL-2.0", "GPL-3.0", "AGPL-3.0",
     "GPL-2.0-only", "GPL-3.0-only", "AGPL-3.0-only",
+    "GPL-2.0-or-later", "GPL-3.0-or-later", "AGPL-3.0-or-later",
     "SSPL-1.0", "RPL-1.1", "RPL-1.5", "OSL-3.0",
 })
 
 MEDIUM_RISK = frozenset({
     "LGPL-2.0", "LGPL-2.1", "LGPL-3.0",
+    "LGPL-2.0-only", "LGPL-2.1-only", "LGPL-3.0-only",
+    "LGPL-2.0-or-later", "LGPL-2.1-or-later", "LGPL-3.0-or-later",
     "MPL-2.0", "EPL-1.0", "EPL-2.0",
     "CDDL-1.0", "CDDL-1.1", "CPL-1.0",
 })
@@ -20,40 +23,94 @@ LOW_RISK = frozenset({
 })
 
 _LICENSE_ALIASES: dict[str, str] = {
+    "gpl": "GPL-3.0",
     "gpl-2.0": "GPL-2.0",
     "gplv2": "GPL-2.0",
     "gpl v2": "GPL-2.0",
+    "gpl2": "GPL-2.0",
+    "gpl 2.0": "GPL-2.0",
+    "gpl version 2": "GPL-2.0",
+    "gnu general public license v2": "GPL-2.0",
+    "gnu gpl v2": "GPL-2.0",
     "gpl-3.0": "GPL-3.0",
     "gplv3": "GPL-3.0",
     "gpl v3": "GPL-3.0",
+    "gpl3": "GPL-3.0",
+    "gpl 3.0": "GPL-3.0",
+    "gpl version 3": "GPL-3.0",
+    "gnu general public license v3": "GPL-3.0",
+    "gnu gpl v3": "GPL-3.0",
+    "gpl-2.0-only": "GPL-2.0-only",
+    "gpl-2.0+": "GPL-2.0-or-later",
+    "gpl-2.0-or-later": "GPL-2.0-or-later",
+    "gpl-3.0-only": "GPL-3.0-only",
+    "gpl-3.0+": "GPL-3.0-or-later",
+    "gpl-3.0-or-later": "GPL-3.0-or-later",
     "agpl-3.0": "AGPL-3.0",
     "agplv3": "AGPL-3.0",
-    "gpl-2.0-only": "GPL-2.0-only",
-    "gpl-3.0-only": "GPL-3.0-only",
+    "agpl v3": "AGPL-3.0",
+    "agpl3": "AGPL-3.0",
+    "agpl 3.0": "AGPL-3.0",
+    "affero general public license v3": "AGPL-3.0",
+    "gnu affero general public license v3": "AGPL-3.0",
     "agpl-3.0-only": "AGPL-3.0-only",
+    "agpl-3.0+": "AGPL-3.0-or-later",
+    "agpl-3.0-or-later": "AGPL-3.0-or-later",
     "sspl-1.0": "SSPL-1.0",
+    "sspl": "SSPL-1.0",
+    "server side public license": "SSPL-1.0",
     "rpl-1.1": "RPL-1.1",
     "rpl-1.5": "RPL-1.5",
     "osl-3.0": "OSL-3.0",
     "lgpl-2.0": "LGPL-2.0",
     "lgpl-2.1": "LGPL-2.1",
     "lgpl-3.0": "LGPL-3.0",
+    "lgplv2": "LGPL-2.0",
+    "lgplv2.1": "LGPL-2.1",
+    "lgplv3": "LGPL-3.0",
+    "lgpl 2.0": "LGPL-2.0",
+    "lgpl 2.1": "LGPL-2.1",
+    "lgpl 3.0": "LGPL-3.0",
+    "lgpl-2.0-only": "LGPL-2.0-only",
+    "lgpl-2.1-only": "LGPL-2.1-only",
+    "lgpl-3.0-only": "LGPL-3.0-only",
+    "lgpl-2.0+": "LGPL-2.0-or-later",
+    "lgpl-2.1+": "LGPL-2.1-or-later",
+    "lgpl-3.0+": "LGPL-3.0-or-later",
+    "lgpl-2.0-or-later": "LGPL-2.0-or-later",
+    "lgpl-2.1-or-later": "LGPL-2.1-or-later",
+    "lgpl-3.0-or-later": "LGPL-3.0-or-later",
     "mpl-2.0": "MPL-2.0",
+    "mozilla public license 2.0": "MPL-2.0",
     "epl-1.0": "EPL-1.0",
     "epl-2.0": "EPL-2.0",
+    "eclipse public license 1.0": "EPL-1.0",
+    "eclipse public license 2.0": "EPL-2.0",
     "cddl-1.0": "CDDL-1.0",
     "cddl-1.1": "CDDL-1.1",
     "cpl-1.0": "CPL-1.0",
     "mit": "MIT",
+    "the mit license": "MIT",
+    "mit license": "MIT",
     "apache-2.0": "Apache-2.0",
     "apache2": "Apache-2.0",
     "apache 2.0": "Apache-2.0",
+    "apache license 2.0": "Apache-2.0",
+    "apache software license 2.0": "Apache-2.0",
     "bsd-2-clause": "BSD-2-Clause",
+    "bsd 2-clause": "BSD-2-Clause",
+    "bsd2": "BSD-2-Clause",
     "bsd-3-clause": "BSD-3-Clause",
+    "bsd 3-clause": "BSD-3-Clause",
+    "bsd3": "BSD-3-Clause",
+    "bsd license": "BSD-3-Clause",
     "0bsd": "0BSD",
     "isc": "ISC",
+    "isc license": "ISC",
     "unlicense": "Unlicense",
+    "the unlicense": "Unlicense",
     "psf-2.0": "PSF-2.0",
+    "python software foundation license 2.0": "PSF-2.0",
     "python-2.0": "Python-2.0",
 }
 
@@ -89,8 +146,13 @@ class LicenseAnalyzer:
 
     def _extract_licenses(self, dep: Dependency) -> list[LicenseRisk]:
         license_strs: list[str] = []
+        
+        lock_licenses = getattr(dep, "_lock_licenses", None)
+        if lock_licenses and isinstance(lock_licenses, list):
+            license_strs.extend(lock_licenses)
+
         oss_licenses = getattr(dep, "_oss_licenses", None)
-        if oss_licenses and isinstance(oss_licenses, list):
+        if not license_strs and oss_licenses and isinstance(oss_licenses, list):
             for entry in oss_licenses:
                 if isinstance(entry, dict):
                     lid = entry.get("licenseId") or entry.get("id")

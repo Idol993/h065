@@ -1,0 +1,31 @@
+{
+  "vulnerabilities": [],
+  "licenses": [],
+  "circular_dependencies": [
+    {
+      "cycle": [
+        "package-c",
+        "package-a",
+        "package-b",
+        "package-c"
+      ],
+      "length": 3
+    }
+  ],
+  "outdated": [],
+  "metadata": {
+    "timestamp": "20260621T164151Z",
+    "tool_version": "1.0.0",
+    "summary": {
+      "total_vulnerabilities": 0,
+      "critical": 0,
+      "high": 0,
+      "medium": 0,
+      "low": 0,
+      "total_licenses": 0,
+      "copyleft_licenses": 0,
+      "total_circular_dependencies": 1,
+      "total_outdated": 0
+    }
+  }
+}

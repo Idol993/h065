@@ -43,6 +43,14 @@ class JsonExporter:
 
         timestamp = datetime.utcnow().strftime("%Y%m%dT%H%M%SZ")
 
+        vuln_by_severity: dict[str, int] = {"critical": 0, "high": 0, "medium": 0, "low": 0}
+        for v in vulnerabilities:
+            sev = v["severity"].lower()
+            vuln_by_severity[sev] = vuln_by_severity.get(sev, 0) + 1
+
+        copyleft_pkg_count = sum(1 for lr in license_results if lr.has_copyleft)
+        outdated_count = sum(1 for r in outdated_results if r.is_outdated)
+
         report = {
             "vulnerabilities": vulnerabilities,
             "licenses": licenses,
@@ -53,9 +61,14 @@ class JsonExporter:
                 "tool_version": "1.0.0",
                 "summary": {
                     "total_vulnerabilities": len(vulnerabilities),
+                    "critical": vuln_by_severity.get("critical", 0),
+                    "high": vuln_by_severity.get("high", 0),
+                    "medium": vuln_by_severity.get("medium", 0),
+                    "low": vuln_by_severity.get("low", 0),
                     "total_licenses": len(licenses),
+                    "copyleft_licenses": copyleft_pkg_count,
                     "total_circular_dependencies": len(circular_dependencies),
-                    "total_outdated": sum(1 for o in outdated if o["is_outdated"]),
+                    "total_outdated": outdated_count,
                 },
             },
         }

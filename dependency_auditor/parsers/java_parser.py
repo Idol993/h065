@@ -10,11 +10,13 @@ _NS = {"m": _MAVEN_NS}
 
 _GRADLE_DEP_RE = re.compile(
     r"""(?x)
-    (\w+(?:\s*\([^)]*\))?)   # configuration: implementation, testImplementation('...'), api, etc.
-    \s+
-    ['"]                      # opening quote
-    ([^'"]+)                  # coordinate string
-    ['"]                      # closing quote
+    (\w+)                         # configuration: implementation, testImplementation, api, etc.
+    \s*
+    (?:\(\s*)?                    # optional opening parenthesis
+    ['"]                          # opening quote
+    ([^'"]+)                      # coordinate string
+    ['"]                          # closing quote
+    (?:\s*\))?                    # optional closing parenthesis
     """
 )
 
@@ -103,7 +105,7 @@ def parse_build_gradle(filepath: str) -> list[Dependency]:
     deps: list[Dependency] = []
 
     for match in _GRADLE_DEP_RE.finditer(content):
-        config = match.group(1).strip().split("(")[0].strip()
+        config = match.group(1).strip()
         coord = match.group(2).strip()
 
         parts = coord.split(":")
