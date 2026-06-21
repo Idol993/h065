@@ -1,0 +1,745 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dependency Audit Report</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #1a1a2e; color: #e0e0e0; }
+  .container { max-width: 1400px; margin: 0 auto; padding: 20px; }
+  h1 { text-align: center; font-size: 2em; margin-bottom: 10px; color: #00d4ff; }
+  .timestamp { text-align: center; color: #888; margin-bottom: 30px; font-size: 0.9em; }
+
+  .summary-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-bottom: 30px; }
+  .card { background: #16213e; border-radius: 10px; padding: 20px; text-align: center; border: 1px solid #0f3460; }
+  .card .count { font-size: 2.5em; font-weight: bold; }
+  .card .label { font-size: 0.9em; color: #aaa; margin-top: 5px; }
+  .card.critical .count { color: #800080; }
+  .card.high .count { color: #ff0000; }
+  .card.medium .count { color: #ffa500; }
+  .card.low .count { color: #ffff00; }
+  .card.copyleft .count { color: #ff4444; }
+  .card.circular .count { color: #ff6600; }
+  .card.outdated .count { color: #4488ff; }
+  .card.new .count { color: #ff0080; }
+  .card.existing .count { color: #ffaa00; }
+  .card.fixed .count { color: #00cc88; }
+
+  .section { background: #16213e; border-radius: 10px; padding: 20px; margin-bottom: 20px; border: 1px solid #0f3460; }
+  .section h2 { color: #00d4ff; margin-bottom: 15px; font-size: 1.3em; border-bottom: 1px solid #0f3460; padding-bottom: 10px; }
+
+  table { width: 100%; border-collapse: collapse; }
+  th { background: #0f3460; color: #00d4ff; padding: 12px 10px; text-align: left; font-size: 0.85em; text-transform: uppercase; }
+  td { padding: 10px; border-bottom: 1px solid #1a1a3e; font-size: 0.9em; }
+  tr:hover { background: #1a2744; }
+
+  .severity-critical { color: #800080; font-weight: bold; }
+  .severity-high { color: #ff0000; font-weight: bold; }
+  .severity-medium { color: #ffa500; font-weight: bold; }
+  .severity-low { color: #ffff00; }
+  .risk-high { color: #ff0000; font-weight: bold; }
+  .risk-medium { color: #ffa500; }
+  .risk-low { color: #00cc00; }
+  .yes { color: #ff4444; }
+  .no { color: #00cc00; }
+
+  .graph-container { width: 100%; height: 600px; border: 1px solid #0f3460; border-radius: 10px; overflow: hidden; position: relative; }
+  .tooltip { position: absolute; background: #0f3460; border: 1px solid #00d4ff; border-radius: 5px; padding: 10px; font-size: 0.8em; pointer-events: none; display: none; z-index: 100; max-width: 300px; }
+
+  .cycle-path { background: #2a1a1a; border-left: 3px solid #ff0000; padding: 10px; margin: 5px 0; font-family: monospace; font-size: 0.9em; }
+
+  .tabs { display: flex; gap: 0; margin-bottom: 20px; flex-wrap: wrap; }
+  .tab { padding: 10px 20px; background: #0f3460; color: #888; cursor: pointer; border: 1px solid #0f3460; border-bottom: none; border-radius: 5px 5px 0 0; }
+  .tab.active { background: #16213e; color: #00d4ff; border-color: #0f3460; }
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+
+  .violation-card { background: #1a1a3e; border-radius: 8px; padding: 12px; margin: 8px 0; border-left: 4px solid; }
+  .violation-card.type-vulnerability { border-left-color: #800080; }
+  .violation-card.type-copyleft_license { border-left-color: #ff4444; }
+  .violation-card.type-circular_dependency { border-left-color: #ff6600; }
+  .violation-card.type-outdated_package { border-left-color: #4488ff; }
+  .violation-header { display: flex; justify-content: space-between; margin-bottom: 5px; }
+  .violation-pkg { font-weight: bold; color: #00d4ff; }
+  .violation-type { font-size: 0.8em; color: #888; }
+  .violation-reason { color: #ccc; margin-bottom: 5px; }
+  .violation-details { font-size: 0.85em; color: #aaa; }
+
+  .action-card { background: #0f3460; border-radius: 6px; padding: 10px; margin: 6px 0; }
+  .action-ignore { border-left: 3px solid #888; }
+  .action-allow { border-left: 3px solid #00cc00; }
+  .action-rule { color: #00d4ff; font-weight: bold; font-size: 0.85em; }
+  .action-pkg { color: #ccc; }
+  .action-reason { color: #aaa; font-size: 0.85em; margin-top: 3px; }
+
+  .diff-section { margin-bottom: 20px; }
+  .diff-section h3 { color: #00d4ff; margin-bottom: 10px; font-size: 1.1em; }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 0.75em; font-weight: bold; margin-right: 8px; }
+  .badge-new { background: #ff0080; color: white; }
+  .badge-existing { background: #ffaa00; color: white; }
+  .badge-fixed { background: #00cc88; color: white; }
+  .status-new { color: #ff0080; font-weight: bold; }
+  .status-existing { color: #ffaa00; }
+  .status-fixed { color: #00cc88; text-decoration: line-through; opacity: 0.7; }
+
+  .policy-config-box { background: #0f3460; border-radius: 8px; padding: 15px; margin-bottom: 20px; }
+  .policy-config-box h4 { color: #00d4ff; margin-bottom: 10px; }
+  .policy-config-box pre { font-family: monospace; font-size: 0.85em; color: #aaa; overflow-x: auto; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>🔍 Dependency Audit Report</h1>
+  <p class="timestamp">Generated: 20260621T181034Z</p>
+
+  
+  <div class="summary-cards">
+    <div class="card new"><div class="count">1</div><div class="label">⚠️ New Issues</div></div>
+    <div class="card existing"><div class="count">4</div><div class="label">🔶 Existing</div></div>
+    <div class="card fixed"><div class="count">0</div><div class="label">✅ Fixed</div></div>
+  </div>
+  
+
+  <div class="summary-cards">
+    <div class="card critical"><div class="count">0</div><div class="label">Critical Vulnerabilities</div></div>
+    <div class="card high"><div class="count">0</div><div class="label">High Vulnerabilities</div></div>
+    <div class="card medium"><div class="count">0</div><div class="label">Medium Vulnerabilities</div></div>
+    <div class="card low"><div class="count">0</div><div class="label">Low Vulnerabilities</div></div>
+    <div class="card copyleft"><div class="count">3</div><div class="label">Copyleft Licenses</div></div>
+    <div class="card circular"><div class="count">1</div><div class="label">Circular Dependencies</div></div>
+    <div class="card outdated"><div class="count">1</div><div class="label">Outdated Packages</div></div>
+  </div>
+
+  <div class="tabs">
+    <div class="tab active" onclick="switchTab('vulnerabilities')">Vulnerabilities</div>
+    <div class="tab" onclick="switchTab('licenses')">Licenses</div>
+    <div class="tab" onclick="switchTab('circular')">Circular Deps</div>
+    <div class="tab" onclick="switchTab('outdated')">Outdated</div>
+    <div class="tab" onclick="switchTab('violations')">Violations</div>
+    <div class="tab" onclick="switchTab('policy')">Policy Result</div>
+    
+    <div class="tab" onclick="switchTab('diff')">Diff vs Baseline</div>
+    
+    <div class="tab" onclick="switchTab('graph')" data-graph-tab="true">Dependency Graph</div>
+  </div>
+
+  <div id="vulnerabilities" class="tab-content active">
+    <div class="section">
+      <h2>Vulnerabilities (0)</h2>
+      
+      <p style="color:#00cc00; text-align:center; padding:20px;">✓ No vulnerabilities found</p>
+      
+    </div>
+  </div>
+
+  <div id="licenses" class="tab-content">
+    <div class="section">
+      <h2>License Analysis (3)</h2>
+      
+      <table>
+        <thead><tr><th>Package</th><th>License</th><th>Risk Level</th><th>Copyleft</th></tr></thead>
+        <tbody>
+        
+          <tr>
+            <td>package-a</td>
+            <td>GPL-3.0</td>
+            <td class="risk-high">HIGH</td>
+            <td class="yes">✗ YES</td>
+          </tr>
+        
+          <tr>
+            <td>package-d</td>
+            <td>AGPL-3.0</td>
+            <td class="risk-high">HIGH</td>
+            <td class="yes">✗ YES</td>
+          </tr>
+        
+          <tr>
+            <td>package-i</td>
+            <td>GPL-3.0</td>
+            <td class="risk-high">HIGH</td>
+            <td class="yes">✗ YES</td>
+          </tr>
+        
+        </tbody>
+      </table>
+      
+    </div>
+  </div>
+
+  <div id="circular" class="tab-content">
+    <div class="section">
+      <h2>Circular Dependencies (1)</h2>
+      
+        
+          <div class="cycle-path">
+            <strong>Cycle #1 (length: 3)</strong><br>
+            package-b → package-c → package-a → package-b
+          </div>
+        
+      
+    </div>
+  </div>
+
+  <div id="outdated" class="tab-content">
+    <div class="section">
+      <h2>Outdated Packages (1)</h2>
+      
+      <table>
+        <thead><tr><th>Package</th><th>Current</th><th>Latest</th><th>Ecosystem</th></tr></thead>
+        <tbody>
+        
+          <tr>
+            <td>package-h</td>
+            <td style="color:#ff4444">2.1.0</td>
+            <td style="color:#00cc00">99.0.0</td>
+            <td>npm</td>
+          </tr>
+        
+        </tbody>
+      </table>
+      
+    </div>
+  </div>
+
+  <div id="violations" class="tab-content">
+    <div class="section">
+      <h2>Policy Violations (5)</h2>
+      
+        
+          <div class="violation-card type-copyleft_license">
+            <div class="violation-header">
+              <span class="violation-pkg">package-a</span>
+              <span class="violation-type">COPYLEFT_LICENSE</span>
+            </div>
+            <div class="violation-reason">
+              <span class="severity-high">[HIGH]</span>
+              Copyleft license 'GPL-3.0' has high risk
+            </div>
+            
+            <div class="violation-details">Version: 1.0.0</div>
+            
+            
+            <div class="violation-details">
+              
+              <strong>license_id:</strong> GPL-3.0 &nbsp;
+              
+              <strong>is_copyleft:</strong> True &nbsp;
+              
+            </div>
+            
+          </div>
+        
+          <div class="violation-card type-copyleft_license">
+            <div class="violation-header">
+              <span class="violation-pkg">package-d</span>
+              <span class="violation-type">COPYLEFT_LICENSE</span>
+            </div>
+            <div class="violation-reason">
+              <span class="severity-high">[HIGH]</span>
+              Copyleft license 'AGPL-3.0' has high risk
+            </div>
+            
+            <div class="violation-details">Version: 4.0.0</div>
+            
+            
+            <div class="violation-details">
+              
+              <strong>license_id:</strong> AGPL-3.0 &nbsp;
+              
+              <strong>is_copyleft:</strong> True &nbsp;
+              
+            </div>
+            
+          </div>
+        
+          <div class="violation-card type-copyleft_license">
+            <div class="violation-header">
+              <span class="violation-pkg">package-i</span>
+              <span class="violation-type">COPYLEFT_LICENSE</span>
+            </div>
+            <div class="violation-reason">
+              <span class="severity-high">[HIGH]</span>
+              Copyleft license 'GPL-3.0' has high risk
+            </div>
+            
+            <div class="violation-details">Version: 1.0.0</div>
+            
+            
+            <div class="violation-details">
+              
+              <strong>license_id:</strong> GPL-3.0 &nbsp;
+              
+              <strong>is_copyleft:</strong> True &nbsp;
+              
+            </div>
+            
+          </div>
+        
+          <div class="violation-card type-circular_dependency">
+            <div class="violation-header">
+              <span class="violation-pkg">package-b</span>
+              <span class="violation-type">CIRCULAR_DEPENDENCY</span>
+            </div>
+            <div class="violation-reason">
+              <span class="severity-medium">[MEDIUM]</span>
+              Circular dependency detected: package-b → package-c → package-a → package-b
+            </div>
+            
+            
+            <div class="violation-details">
+              
+              <strong>cycle:</strong> ['package-b', 'package-c', 'package-a', 'package-b'] &nbsp;
+              
+              <strong>length:</strong> 3 &nbsp;
+              
+            </div>
+            
+          </div>
+        
+          <div class="violation-card type-outdated_package">
+            <div class="violation-header">
+              <span class="violation-pkg">package-h</span>
+              <span class="violation-type">OUTDATED_PACKAGE</span>
+            </div>
+            <div class="violation-reason">
+              <span class="severity-low">[LOW]</span>
+              Package is outdated: 2.1.0 → 99.0.0
+            </div>
+            
+            <div class="violation-details">Version: 2.1.0</div>
+            
+            
+            <div class="violation-details">
+              
+              <strong>current_version:</strong> 2.1.0 &nbsp;
+              
+              <strong>latest_version:</strong> 99.0.0 &nbsp;
+              
+            </div>
+            
+          </div>
+        
+      
+    </div>
+  </div>
+
+  <div id="policy" class="tab-content">
+    <div class="section">
+      <h2>Policy Result</h2>
+
+      
+      <div class="policy-config-box">
+        <h4>📋 Active Policy Configuration</h4>
+        <pre>{
+  "allowed_outdated_packages": [
+    "package-f"
+  ],
+  "fail_on_circular_dependency": true,
+  "fail_on_copyleft_license": true,
+  "fail_on_high_vulnerability": true,
+  "fail_on_outdated": false,
+  "ignore_cves": [],
+  "ignore_packages": [
+    "package-e"
+  ],
+  "license_allowlist": [
+    "LGPL-2.1"
+  ],
+  "license_denylist": [],
+  "license_threshold": "medium",
+  "maven_api_url": "https://search.maven.org/solrsearch/select",
+  "max_depth": 5,
+  "npm_api_url": "https://registry.npmjs.org",
+  "oss_index_url": "https://ossindex.sonatype.org/api/v3/component-report",
+  "outdated_grace_days": 0,
+  "pypi_api_url": "https://pypi.org/pypi",
+  "severity_threshold": "low"
+}</pre>
+      </div>
+      
+
+      <h3 style="color:#00d4ff; margin-bottom:10px;">Triggered Rules (5)</h3>
+      
+      <table>
+        <thead><tr><th>Type</th><th>Package</th><th>Severity</th><th>Reason</th></tr></thead>
+        <tbody>
+        
+          <tr>
+            <td class="severity-high">Copyleft License</td>
+            <td>package-a</td>
+            <td class="severity-high">HIGH</td>
+            <td>Copyleft license 'GPL-3.0' has high risk</td>
+          </tr>
+        
+          <tr>
+            <td class="severity-high">Copyleft License</td>
+            <td>package-d</td>
+            <td class="severity-high">HIGH</td>
+            <td>Copyleft license 'AGPL-3.0' has high risk</td>
+          </tr>
+        
+          <tr>
+            <td class="severity-high">Copyleft License</td>
+            <td>package-i</td>
+            <td class="severity-high">HIGH</td>
+            <td>Copyleft license 'GPL-3.0' has high risk</td>
+          </tr>
+        
+          <tr>
+            <td class="severity-medium">Circular Dependency</td>
+            <td>package-b</td>
+            <td class="severity-medium">MEDIUM</td>
+            <td>Circular dependency detected: package-b → package-c → package-a → package-b</td>
+          </tr>
+        
+          <tr>
+            <td class="severity-low">Outdated Package</td>
+            <td>package-h</td>
+            <td class="severity-low">LOW</td>
+            <td>Package is outdated: 2.1.0 → 99.0.0</td>
+          </tr>
+        
+        </tbody>
+      </table>
+      
+
+      <h3 style="color:#00d4ff; margin-top:25px; margin-bottom:10px;">Policy Actions (7)</h3>
+      
+        
+          <div class="action-card action-allow">
+            <div>
+              <span class="action-rule">License Threshold</span>
+              <span style="color:#888; margin-left:10px;">[ALLOW]</span>
+            </div>
+            <div class="action-pkg">Package: package-b</div>
+            <div class="action-reason">License risk low below threshold</div>
+          </div>
+        
+          <div class="action-card action-allow">
+            <div>
+              <span class="action-rule">License Threshold</span>
+              <span style="color:#888; margin-left:10px;">[ALLOW]</span>
+            </div>
+            <div class="action-pkg">Package: package-c</div>
+            <div class="action-reason">License risk low below threshold</div>
+          </div>
+        
+          <div class="action-card action-ignore">
+            <div>
+              <span class="action-rule">Ignore Packages</span>
+              <span style="color:#888; margin-left:10px;">[IGNORE]</span>
+            </div>
+            <div class="action-pkg">Package: package-e</div>
+            <div class="action-reason">Package 'package-e' is in ignore list</div>
+          </div>
+        
+          <div class="action-card action-allow">
+            <div>
+              <span class="action-rule">License Threshold</span>
+              <span style="color:#888; margin-left:10px;">[ALLOW]</span>
+            </div>
+            <div class="action-pkg">Package: package-f</div>
+            <div class="action-reason">License risk low below threshold</div>
+          </div>
+        
+          <div class="action-card action-allow">
+            <div>
+              <span class="action-rule">License Allowlist</span>
+              <span style="color:#888; margin-left:10px;">[ALLOW]</span>
+            </div>
+            <div class="action-pkg">Package: package-g</div>
+            <div class="action-reason">License 'LGPL-2.1' is in allowlist</div>
+          </div>
+        
+          <div class="action-card action-allow">
+            <div>
+              <span class="action-rule">License Threshold</span>
+              <span style="color:#888; margin-left:10px;">[ALLOW]</span>
+            </div>
+            <div class="action-pkg">Package: package-h</div>
+            <div class="action-reason">License risk low below threshold</div>
+          </div>
+        
+          <div class="action-card action-allow">
+            <div>
+              <span class="action-rule">Allowed Outdated Packages</span>
+              <span style="color:#888; margin-left:10px;">[ALLOW]</span>
+            </div>
+            <div class="action-pkg">Package: package-f</div>
+            <div class="action-reason">Package 'package-f' is allowed to be outdated</div>
+          </div>
+        
+      
+    </div>
+  </div>
+
+  
+  <div id="diff" class="tab-content">
+    <div class="section">
+      <h2>Diff vs Baseline</h2>
+
+      <div class="diff-section">
+        <h3><span class="badge badge-new">NEW</span> New Violations (1)</h3>
+        
+          
+            <div class="violation-card type-copyleft_license">
+              <div class="violation-header">
+                <span class="violation-pkg status-new">package-i</span>
+                <span class="violation-type">COPYLEFT_LICENSE</span>
+              </div>
+              <div class="violation-reason">
+                <span class="severity-high">[HIGH]</span>
+                Copyleft license 'GPL-3.0' has high risk
+              </div>
+              
+              <div class="violation-details">Version: 1.0.0</div>
+              
+            </div>
+          
+        
+      </div>
+
+      <div class="diff-section">
+        <h3><span class="badge badge-existing">EXISTING</span> Existing Violations (4)</h3>
+        
+          
+            <div class="violation-card type-copyleft_license">
+              <div class="violation-header">
+                <span class="violation-pkg status-existing">package-a</span>
+                <span class="violation-type">COPYLEFT_LICENSE</span>
+              </div>
+              <div class="violation-reason">
+                <span class="severity-high">[HIGH]</span>
+                Copyleft license 'GPL-3.0' has high risk
+              </div>
+              
+              <div class="violation-details">Version: 1.0.0</div>
+              
+            </div>
+          
+            <div class="violation-card type-copyleft_license">
+              <div class="violation-header">
+                <span class="violation-pkg status-existing">package-d</span>
+                <span class="violation-type">COPYLEFT_LICENSE</span>
+              </div>
+              <div class="violation-reason">
+                <span class="severity-high">[HIGH]</span>
+                Copyleft license 'AGPL-3.0' has high risk
+              </div>
+              
+              <div class="violation-details">Version: 4.0.0</div>
+              
+            </div>
+          
+            <div class="violation-card type-circular_dependency">
+              <div class="violation-header">
+                <span class="violation-pkg status-existing">package-b</span>
+                <span class="violation-type">CIRCULAR_DEPENDENCY</span>
+              </div>
+              <div class="violation-reason">
+                <span class="severity-medium">[MEDIUM]</span>
+                Circular dependency detected: package-b → package-c → package-a → package-b
+              </div>
+              
+            </div>
+          
+            <div class="violation-card type-outdated_package">
+              <div class="violation-header">
+                <span class="violation-pkg status-existing">package-h</span>
+                <span class="violation-type">OUTDATED_PACKAGE</span>
+              </div>
+              <div class="violation-reason">
+                <span class="severity-low">[LOW]</span>
+                Package is outdated: 2.1.0 → 99.0.0
+              </div>
+              
+              <div class="violation-details">Version: 2.1.0</div>
+              
+            </div>
+          
+        
+      </div>
+
+      <div class="diff-section">
+        <h3><span class="badge badge-fixed">FIXED</span> Fixed Violations (0)</h3>
+        
+        <p style="color:#aaa; padding:10px;">No fixed violations</p>
+        
+      </div>
+    </div>
+  </div>
+  
+
+  <div id="graph" class="tab-content">
+    <div class="section">
+      <h2>Dependency Graph</h2>
+      <div class="graph-container" id="graph-container">
+        <div class="tooltip" id="tooltip"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<script>
+var graphSimulation = null;
+var graphInitialized = false;
+
+function initGraph() {
+  if (graphInitialized) {
+    if (graphSimulation) {
+      var container = document.getElementById('graph-container');
+      var width = container.clientWidth;
+      var height = container.clientHeight;
+      graphSimulation.force('center', d3.forceCenter(width / 2, height / 2));
+      graphSimulation.alpha(0.3).restart();
+    }
+    return;
+  }
+  graphInitialized = true;
+
+  var graphData = {"links": [{"is_cycle": true, "source": "package-a", "target": "package-b"}, {"is_cycle": true, "source": "package-b", "target": "package-c"}, {"is_cycle": true, "source": "package-c", "target": "package-a"}, {"is_cycle": false, "source": "package-a", "target": "package-a"}, {"is_cycle": true, "source": "package-b", "target": "package-c"}, {"is_cycle": true, "source": "package-c", "target": "package-a"}, {"is_cycle": true, "source": "package-a", "target": "package-b"}, {"is_cycle": true, "source": "package-b", "target": "package-b"}, {"is_cycle": true, "source": "package-c", "target": "package-a"}, {"is_cycle": true, "source": "package-a", "target": "package-b"}, {"is_cycle": true, "source": "package-b", "target": "package-c"}, {"is_cycle": false, "source": "package-c", "target": "package-c"}], "nodes": [{"group": "npm", "id": "package-a", "is_cycle": true, "risk": "low", "vulnerabilities": 0}, {"group": "npm", "id": "package-d", "is_cycle": false, "risk": "low", "vulnerabilities": 0}, {"group": "npm", "id": "package-i", "is_cycle": false, "risk": "low", "vulnerabilities": 0}, {"group": "npm", "id": "package-h", "is_cycle": false, "risk": "low", "vulnerabilities": 0}, {"group": "npm", "id": "package-b", "is_cycle": true, "risk": "low", "vulnerabilities": 0}, {"group": "npm", "id": "package-c", "is_cycle": true, "risk": "low", "vulnerabilities": 0}, {"group": "npm", "id": "package-f", "is_cycle": false, "risk": "low", "vulnerabilities": 0}, {"group": "npm", "id": "package-g", "is_cycle": false, "risk": "low", "vulnerabilities": 0}, {"group": "npm", "id": "package-e", "is_cycle": false, "risk": "low", "vulnerabilities": 0}]};
+  var nodes = graphData.nodes || [];
+  var links = graphData.links || [];
+
+  if (nodes.length === 0) {
+    document.getElementById('graph-container').innerHTML =
+      '<p style="color:#aaa; text-align:center; padding:40px; padding-top:200px;">No dependency graph data available</p>';
+    return;
+  }
+
+  var container = document.getElementById('graph-container');
+  var width = container.clientWidth;
+  var height = container.clientHeight;
+
+  var svg = d3.select('#graph-container')
+    .append('svg')
+    .attr('width', width)
+    .attr('height', height);
+
+  var defs = svg.append('defs');
+  var arrowMarker = defs.append('marker')
+    .attr('id', 'arrow')
+    .attr('viewBox', '0 -5 10 10')
+    .attr('refX', 25)
+    .attr('refY', 0)
+    .attr('markerWidth', 6)
+    .attr('markerHeight', 6)
+    .attr('orient', 'auto');
+  arrowMarker.append('path')
+    .attr('d', 'M0,-5L10,0L0,5')
+    .attr('fill', '#888');
+
+  var cycleArrowMarker = defs.append('marker')
+    .attr('id', 'arrow-cycle')
+    .attr('viewBox', '0 -5 10 10')
+    .attr('refX', 25)
+    .attr('refY', 0)
+    .attr('markerWidth', 6)
+    .attr('markerHeight', 6)
+    .attr('orient', 'auto');
+  cycleArrowMarker.append('path')
+    .attr('d', 'M0,-5L10,0L0,5')
+    .attr('fill', '#ff0000');
+
+  var tooltip = document.getElementById('tooltip');
+
+  var colorMap = { pypi: '#3776ab', npm: '#cb3837', maven: '#b07219' };
+  var riskColorMap = { high: '#ff0000', medium: '#ffa500', low: '#00cc00' };
+
+  graphSimulation = d3.forceSimulation(nodes)
+    .force('link', d3.forceLink(links).id(d => d.id).distance(100))
+    .force('charge', d3.forceManyBody().strength(-250))
+    .force('center', d3.forceCenter(width / 2, height / 2))
+    .force('collision', d3.forceCollide().radius(35));
+
+  var link = svg.append('g')
+    .selectAll('line')
+    .data(links)
+    .enter().append('line')
+    .attr('stroke', d => d.is_cycle ? '#ff0000' : '#555')
+    .attr('stroke-width', d => d.is_cycle ? 3 : 1.5)
+    .attr('stroke-dasharray', d => d.is_cycle ? '6,3' : '')
+    .attr('marker-end', d => d.is_cycle ? 'url(#arrow-cycle)' : 'url(#arrow)');
+
+  var node = svg.append('g')
+    .selectAll('circle')
+    .data(nodes)
+    .enter().append('circle')
+    .attr('r', d => Math.max(10, 6 + (d.vulnerabilities || 0) * 3))
+    .attr('fill', d => d.is_cycle ? '#ff0000' : (colorMap[d.group] || '#888'))
+    .attr('stroke', d => d.is_cycle ? '#ffff00' : (riskColorMap[d.risk] || '#666'))
+    .attr('stroke-width', d => d.is_cycle ? 3 : (d.vulnerabilities > 0 ? 3 : 1))
+    .on('mouseover', function(event, d) {
+      tooltip.style.display = 'block';
+      var parts = ['<strong>' + d.id + '</strong>', 'Ecosystem: ' + d.group];
+      if (d.is_cycle) parts.push('<br><span style="color:#ff0000;">⚠ Part of circular dependency</span>');
+      parts.push('<br>Vulnerabilities: ' + (d.vulnerabilities || 0));
+      parts.push('<br>Risk: ' + (d.risk || 'none'));
+      tooltip.innerHTML = parts.join('');
+      var rect = container.getBoundingClientRect();
+      tooltip.style.left = (event.clientX - rect.left + 10) + 'px';
+      tooltip.style.top = (event.clientY - rect.top + 10) + 'px';
+    })
+    .on('mousemove', function(event) {
+      var rect = container.getBoundingClientRect();
+      tooltip.style.left = (event.clientX - rect.left + 10) + 'px';
+      tooltip.style.top = (event.clientY - rect.top + 10) + 'px';
+    })
+    .on('mouseout', function() {
+      tooltip.style.display = 'none';
+    })
+    .call(d3.drag()
+      .on('start', dragstarted)
+      .on('drag', dragged)
+      .on('end', dragended));
+
+  var label = svg.append('g')
+    .selectAll('text')
+    .data(nodes)
+    .enter().append('text')
+    .text(d => d.id)
+    .attr('font-size', '11px')
+    .attr('fill', d => d.is_cycle ? '#ffff00' : '#ccc')
+    .attr('font-weight', d => d.is_cycle ? 'bold' : 'normal')
+    .attr('dx', 14)
+    .attr('dy', 4);
+
+  graphSimulation.on('tick', function() {
+    link.attr('x1', d => d.source.x).attr('y1', d => d.source.y)
+        .attr('x2', d => d.target.x).attr('y2', d => d.target.y);
+    node.attr('cx', d => d.x).attr('cy', d => d.y);
+    label.attr('x', d => d.x).attr('y', d => d.y);
+  });
+
+  function dragstarted(event) { if (!event.active) graphSimulation.alphaTarget(0.3).restart(); event.subject.fx = event.subject.x; event.subject.fy = event.subject.y; }
+  function dragged(event) { event.subject.fx = event.x; event.subject.fy = event.y; }
+  function dragended(event) { if (!event.active) graphSimulation.alphaTarget(0); event.subject.fx = null; event.subject.fy = null; }
+}
+
+function switchTab(tabId) {
+  document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(el => el.classList.remove('active'));
+  document.getElementById(tabId).classList.add('active');
+  event.target.classList.add('active');
+
+  if (tabId === 'graph') {
+    setTimeout(initGraph, 50);
+  }
+}
+
+window.addEventListener('resize', function() {
+  if (graphInitialized && graphSimulation) {
+    var container = document.getElementById('graph-container');
+    var width = container.clientWidth;
+    var height = container.clientHeight;
+    d3.select('#graph-container svg').attr('width', width).attr('height', height);
+    graphSimulation.force('center', d3.forceCenter(width / 2, height / 2));
+    graphSimulation.alpha(0.3).restart();
+  }
+});
+</script>
+</body>
+</html>

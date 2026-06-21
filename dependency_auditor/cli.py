@@ -5,6 +5,7 @@ from pathlib import Path
 import click
 from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TimeElapsedColumn
+from rich.panel import Panel
 
 from dependency_auditor.parsers.python_parser import Dependency, parse as py_parse
 from dependency_auditor.parsers.node_parser import parse as node_parse
@@ -14,6 +15,8 @@ from dependency_auditor.analyzers.vulnerability_analyzer import VulnerabilityAna
 from dependency_auditor.analyzers.license_analyzer import LicenseAnalyzer
 from dependency_auditor.analyzers.circular_detector import CircularDetector
 from dependency_auditor.analyzers.outdated_checker import OutdatedChecker
+from dependency_auditor.analyzers.policy_engine import PolicyEngine, PolicyResult
+from dependency_auditor.analyzers.baseline_comparator import BaselineComparator, BaselineDiff
 from dependency_auditor.reporters.terminal_reporter import TerminalReporter
 from dependency_auditor.reporters.html_reporter import HtmlReporter
 from dependency_auditor.reporters.json_exporter import JsonExporter
@@ -104,6 +107,61 @@ def _parse_all(project_dir: str, include_dev: bool = False) -> list[Dependency]:
     return all_deps
 
 
+def _run_analyses(deps, cfg, no_vuln, no_license, no_circular, no_outdated):
+    vuln_results = []
+    license_results = []
+    cycles = []
+    outdated_results = []
+
+    if not no_vuln:
+        console.print("[bold cyan]▸ Scanning vulnerabilities...[/bold cyan]")
+        analyzer = VulnerabilityAnalyzer(cfg)
+        vuln_results = analyzer.analyze(deps)
+
+    if not no_license:
+        console.print("[bold cyan]▸ Analyzing licenses...[/bold cyan]")
+        license_analyzer = LicenseAnalyzer()
+        license_results = license_analyzer.analyze(deps)
+
+    if not no_circular:
+        console.print("[bold cyan]▸ Detecting circular dependencies...[/bold cyan]")
+        detector = CircularDetector()
+        cycles = detector.detect(deps)
+
+    if not no_outdated:
+        console.print("[bold cyan]▸ Checking outdated dependencies...[/bold cyan]")
+        checker = OutdatedChecker(cfg)
+        outdated_results = checker.check(deps)
+
+    return vuln_results, license_results, cycles, outdated_results
+
+
+def _apply_policy(cfg, vuln_results, license_results, cycles, outdated_results):
+    policy_engine = PolicyEngine(cfg)
+    return policy_engine.apply(vuln_results, license_results, cycles, outdated_results)
+
+
+def _compare_baseline(baseline_path, policy_result):
+    if not baseline_path:
+        return None
+    comparator = BaselineComparator(baseline_path)
+    return comparator.compare(policy_result.violations)
+
+
+def _print_diff_summary(diff: BaselineDiff):
+    if not diff:
+        return
+    lines = []
+    if diff.new_violations:
+        lines.append(f"[#ff0080]⚠️  New violations: {len(diff.new_violations)}[/#ff0080]")
+    if diff.existing_violations:
+        lines.append(f"[#ffaa00]🔶 Existing violations: {len(diff.existing_violations)}[/#ffaa00]")
+    if diff.fixed_violations:
+        lines.append(f"[#00cc88]✅ Fixed violations: {len(diff.fixed_violations)}[/#00cc88]")
+    if lines:
+        console.print(Panel("\n".join(lines), title="Baseline Comparison", border_style="bold"))
+
+
 @click.group()
 @click.version_option(version="1.0.0", prog_name="dep-audit")
 def cli():
@@ -121,7 +179,8 @@ def cli():
 @click.option("--html", is_flag=True, help="Generate HTML report")
 @click.option("--json", "json_output", is_flag=True, help="Generate JSON report")
 @click.option("--output-dir", default=".", help="Output directory for reports")
-def audit(project_dir, include_dev, config, no_vuln, no_license, no_circular, no_outdated, html, json_output, output_dir):
+@click.option("--baseline", default=None, help="Path to baseline JSON report for diff comparison")
+def audit(project_dir, include_dev, config, no_vuln, no_license, no_circular, no_outdated, html, json_output, output_dir, baseline):
     """Full dependency audit: vulnerabilities, licenses, circular deps, outdated checks."""
     cfg = ConfigLoader(config)
     reporter = TerminalReporter(console)
@@ -133,52 +192,48 @@ def audit(project_dir, include_dev, config, no_vuln, no_license, no_circular, no
 
     console.print(f"\n[bold]Found {len(deps)} dependencies[/bold]\n")
 
-    vuln_results = []
-    license_results = []
-    cycles = []
-    outdated_results = []
+    vuln_results, license_results, cycles, outdated_results = _run_analyses(
+        deps, cfg, no_vuln, no_license, no_circular, no_outdated
+    )
+
+    policy_result = _apply_policy(cfg, vuln_results, license_results, cycles, outdated_results)
+
+    fv = policy_result.filtered_vulns
+    fl = policy_result.filtered_licenses
+    fc = policy_result.filtered_cycles
+    fo = policy_result.filtered_outdated
+
+    diff = _compare_baseline(baseline, policy_result)
+    if diff:
+        _print_diff_summary(diff)
 
     if not no_vuln:
-        console.print("[bold cyan]▸ Scanning vulnerabilities...[/bold cyan]")
-        analyzer = VulnerabilityAnalyzer(cfg)
-        vuln_results = analyzer.analyze(deps)
-        reporter.report_vulnerabilities(vuln_results)
-
+        reporter.report_vulnerabilities(fv)
     if not no_license:
-        console.print("[bold cyan]▸ Analyzing licenses...[/bold cyan]")
-        license_analyzer = LicenseAnalyzer()
-        license_results = license_analyzer.analyze(deps)
-        reporter.report_licenses(license_results)
-
+        reporter.report_licenses(fl)
     if not no_circular:
-        console.print("[bold cyan]▸ Detecting circular dependencies...[/bold cyan]")
-        detector = CircularDetector()
-        cycles = detector.detect(deps)
-        reporter.report_circular(cycles)
-
+        reporter.report_circular(fc)
     if not no_outdated:
-        console.print("[bold cyan]▸ Checking outdated dependencies...[/bold cyan]")
-        checker = OutdatedChecker(cfg)
-        outdated_results = checker.check(deps)
-        reporter.report_outdated(outdated_results)
+        reporter.report_outdated(fo)
 
-    reporter.print_summary(vuln_results, license_results, cycles, outdated_results)
+    reporter.print_summary(fv, fl, fc, fo)
+
+    dep_tree = None
+    if not no_circular:
+        detector = CircularDetector()
+        dep_tree = detector.get_dependency_tree(deps, cfg.max_depth)
 
     if html:
         html_reporter = HtmlReporter()
-        dep_tree = None
-        if not no_circular:
-            detector = CircularDetector()
-            dep_tree = detector.get_dependency_tree(deps, cfg.max_depth)
-        path = html_reporter.export(vuln_results, license_results, cycles, outdated_results, dep_tree, output_dir)
+        path = html_reporter.export(fv, fl, fc, fo, dep_tree, output_dir, policy_result, diff, cfg.to_dict())
         console.print(f"\n[green]HTML report saved: {path}[/green]")
 
     if json_output:
         json_exporter = JsonExporter()
-        path = json_exporter.export(vuln_results, license_results, cycles, outdated_results, output_dir)
+        path = json_exporter.export(fv, fl, fc, fo, output_dir, policy_result, diff, cfg.to_dict())
         console.print(f"[green]JSON report saved: {path}[/green]")
 
-    exit_code = _determine_exit_code(vuln_results, license_results, cycles, cfg)
+    exit_code = _determine_exit_code(policy_result, cfg, diff)
     sys.exit(exit_code)
 
 
@@ -189,7 +244,8 @@ def audit(project_dir, include_dev, config, no_vuln, no_license, no_circular, no
 @click.option("--html", is_flag=True, help="Generate HTML report")
 @click.option("--json", "json_output", is_flag=True, help="Generate JSON report")
 @click.option("--output-dir", default=".", help="Output directory for reports")
-def licenses(project_dir, include_dev, config, html, json_output, output_dir):
+@click.option("--baseline", default=None, help="Path to baseline JSON report for diff comparison")
+def licenses(project_dir, include_dev, config, html, json_output, output_dir, baseline):
     """Analyze dependency licenses for copyleft risks."""
     cfg = ConfigLoader(config)
     deps = _parse_all(project_dir, include_dev)
@@ -204,22 +260,32 @@ def licenses(project_dir, include_dev, config, html, json_output, output_dir):
     analyzer = LicenseAnalyzer()
     license_results = analyzer.analyze(deps)
 
+    policy_result = _apply_policy(cfg, vuln_results, license_results, [], [])
+
+    fv = policy_result.filtered_vulns
+    fl = policy_result.filtered_licenses
+    fc = policy_result.filtered_cycles
+    fo = policy_result.filtered_outdated
+
+    diff = _compare_baseline(baseline, policy_result)
+    if diff:
+        _print_diff_summary(diff)
+
     reporter = TerminalReporter(console)
-    reporter.report_licenses(license_results)
+    reporter.report_licenses(fl)
 
     if html:
         html_reporter = HtmlReporter()
-        path = html_reporter.export(vuln_results, license_results, [], [], None, output_dir)
+        path = html_reporter.export(fv, fl, fc, fo, None, output_dir, policy_result, diff, cfg.to_dict())
         console.print(f"\n[green]HTML report saved: {path}[/green]")
 
     if json_output:
         json_exporter = JsonExporter()
-        path = json_exporter.export(vuln_results, license_results, [], [], output_dir)
+        path = json_exporter.export(fv, fl, fc, fo, output_dir, policy_result, diff, cfg.to_dict())
         console.print(f"[green]JSON report saved: {path}[/green]")
 
-    has_copyleft = any(r.has_copyleft for r in license_results)
-    if has_copyleft and cfg.fail_on_copyleft_license:
-        sys.exit(3)
+    exit_code = _determine_exit_code(policy_result, cfg, diff)
+    sys.exit(exit_code)
 
 
 @cli.command()
@@ -238,15 +304,18 @@ def graph(project_dir, include_dev, config, max_depth):
     detector = CircularDetector()
     cycles = detector.detect(deps)
 
+    policy_result = _apply_policy(cfg, [], [], cycles, [])
+    fc = policy_result.filtered_cycles
+
     reporter = TerminalReporter(console)
-    reporter.report_circular(cycles)
+    reporter.report_circular(fc)
 
     console.print("\n[bold cyan]Dependency Tree:[/bold cyan]")
     tree = detector.get_dependency_tree(deps, max_depth)
     reporter.report_dependency_tree(tree, max_depth)
 
-    if cycles and cfg.fail_on_circular_dependency:
-        sys.exit(2)
+    exit_code = _determine_exit_code(policy_result, cfg, None)
+    sys.exit(exit_code)
 
 
 @cli.command()
@@ -256,7 +325,8 @@ def graph(project_dir, include_dev, config, max_depth):
 @click.option("--html", is_flag=True, help="Generate HTML report")
 @click.option("--json", "json_output", is_flag=True, help="Generate JSON report")
 @click.option("--output-dir", default=".", help="Output directory for reports")
-def report(project_dir, include_dev, config, html, json_output, output_dir):
+@click.option("--baseline", default=None, help="Path to baseline JSON report for diff comparison")
+def report(project_dir, include_dev, config, html, json_output, output_dir, baseline):
     """Generate audit reports (terminal + optional HTML/JSON)."""
     cfg = ConfigLoader(config)
     deps = _parse_all(project_dir, include_dev)
@@ -287,38 +357,63 @@ def report(project_dir, include_dev, config, html, json_output, output_dir):
         checker = OutdatedChecker(cfg)
         outdated_results = checker.check(deps)
 
+    policy_result = _apply_policy(cfg, vuln_results, license_results, cycles, outdated_results)
+
+    fv = policy_result.filtered_vulns
+    fl = policy_result.filtered_licenses
+    fc = policy_result.filtered_cycles
+    fo = policy_result.filtered_outdated
+
+    diff = _compare_baseline(baseline, policy_result)
+    if diff:
+        _print_diff_summary(diff)
+
     dep_tree = detector.get_dependency_tree(deps, cfg.max_depth)
 
     reporter = TerminalReporter(console)
-    reporter.report_vulnerabilities(vuln_results)
-    reporter.report_licenses(license_results)
-    reporter.report_circular(cycles)
-    reporter.report_outdated(outdated_results)
-    reporter.print_summary(vuln_results, license_results, cycles, outdated_results)
+    reporter.report_vulnerabilities(fv)
+    reporter.report_licenses(fl)
+    reporter.report_circular(fc)
+    reporter.report_outdated(fo)
+    reporter.print_summary(fv, fl, fc, fo)
 
     if html:
         html_reporter = HtmlReporter()
-        path = html_reporter.export(vuln_results, license_results, cycles, outdated_results, dep_tree, output_dir)
+        path = html_reporter.export(fv, fl, fc, fo, dep_tree, output_dir, policy_result, diff, cfg.to_dict())
         console.print(f"\n[green]HTML report saved: {path}[/green]")
 
     if json_output:
         json_exporter = JsonExporter()
-        path = json_exporter.export(vuln_results, license_results, cycles, outdated_results, output_dir)
+        path = json_exporter.export(fv, fl, fc, fo, output_dir, policy_result, diff, cfg.to_dict())
         console.print(f"[green]JSON report saved: {path}[/green]")
 
-    exit_code = _determine_exit_code(vuln_results, license_results, cycles, cfg)
+    exit_code = _determine_exit_code(policy_result, cfg, diff)
     sys.exit(exit_code)
 
 
-def _determine_exit_code(vuln_results, license_results, cycles, config) -> int:
-    high_vulns = 0
-    for vr in vuln_results:
-        for v in vr.vulnerabilities:
-            if v.severity in ("high", "critical"):
-                high_vulns += 1
+def _determine_exit_code(policy_result: PolicyResult, config: ConfigLoader, diff: BaselineDiff | None) -> int:
+    violations_for_exit = policy_result.violations
 
-    has_copyleft = any(r.has_copyleft for r in license_results)
-    has_circular = len(cycles) > 0
+    if diff is not None:
+        violations_for_exit = diff.new_violations
+        console.print(f"[dim]CI exit code based on {len(violations_for_exit)} new violations only[/dim]")
+
+    high_vulns = 0
+    has_copyleft = False
+    has_circular = False
+    has_outdated = False
+
+    for v in violations_for_exit:
+        if v.type == "vulnerability":
+            sev = v.severity.lower()
+            if sev in ("high", "critical"):
+                high_vulns += 1
+        elif v.type == "copyleft_license":
+            has_copyleft = True
+        elif v.type == "circular_dependency":
+            has_circular = True
+        elif v.type == "outdated_package":
+            has_outdated = True
 
     if high_vulns > 0 and config.fail_on_high_vulnerability:
         return 1
@@ -326,6 +421,8 @@ def _determine_exit_code(vuln_results, license_results, cycles, config) -> int:
         return 2
     if has_copyleft and config.fail_on_copyleft_license:
         return 3
+    if has_outdated and config.fail_on_outdated:
+        return 4
 
     return 0
 

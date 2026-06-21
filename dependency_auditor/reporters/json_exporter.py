@@ -6,6 +6,8 @@ from dependency_auditor.analyzers.vulnerability_analyzer import VulnerabilityRes
 from dependency_auditor.analyzers.license_analyzer import LicenseResult
 from dependency_auditor.analyzers.circular_detector import CircularDependency
 from dependency_auditor.analyzers.outdated_checker import OutdatedResult
+from dependency_auditor.analyzers.policy_engine import PolicyResult, PolicyViolation, PolicyAction
+from dependency_auditor.analyzers.baseline_comparator import BaselineDiff
 
 
 class JsonExporter:
@@ -16,6 +18,9 @@ class JsonExporter:
         cycles: list[CircularDependency],
         outdated_results: list[OutdatedResult],
         output_dir: str = ".",
+        policy_result: PolicyResult | None = None,
+        baseline_diff: BaselineDiff | None = None,
+        config_dict: dict | None = None,
     ) -> str:
         vulnerabilities = []
         for result in vuln_results:
@@ -52,7 +57,24 @@ class JsonExporter:
         copyleft_pkg_count = sum(1 for lr in license_results if lr.has_copyleft)
         outdated_count = len(outdated)
 
+        violations = []
+        if policy_result:
+            violations = [self._serialize_violation(v) for v in policy_result.violations]
+
+        actions = []
+        if policy_result:
+            actions = [self._serialize_action(a) for a in policy_result.actions]
+
+        diff_data = None
+        if baseline_diff:
+            diff_data = {
+                "new_violations": [self._serialize_violation(v) for v in baseline_diff.new_violations],
+                "existing_violations": [self._serialize_violation(v) for v in baseline_diff.existing_violations],
+                "fixed_violations": baseline_diff.fixed_violations,
+            }
+
         report = {
+            "violations": violations,
             "vulnerabilities": vulnerabilities,
             "licenses": licenses,
             "circular_dependencies": circular_dependencies,
@@ -61,6 +83,7 @@ class JsonExporter:
                 "timestamp": timestamp,
                 "tool_version": "1.0.0",
                 "summary": {
+                    "total_violations": len(violations),
                     "total_vulnerabilities": len(vulnerabilities),
                     "critical": vuln_by_severity.get("critical", 0),
                     "high": vuln_by_severity.get("high", 0),
@@ -74,6 +97,13 @@ class JsonExporter:
             },
         }
 
+        if actions:
+            report["policy_actions"] = actions
+        if diff_data:
+            report["baseline_diff"] = diff_data
+        if config_dict:
+            report["policy_config"] = config_dict
+
         os.makedirs(output_dir, exist_ok=True)
         filename = f"dependency_audit_{timestamp}.json"
         output_path = os.path.join(output_dir, filename)
@@ -82,6 +112,25 @@ class JsonExporter:
             json.dump(report, f, indent=2, ensure_ascii=False)
 
         return output_path
+
+    def _serialize_violation(self, v: PolicyViolation) -> dict:
+        return {
+            "type": v.type,
+            "package": v.package,
+            "version": v.version,
+            "severity": v.severity,
+            "reason": v.reason,
+            "details": v.details,
+        }
+
+    def _serialize_action(self, a: PolicyAction) -> dict:
+        return {
+            "action": a.action,
+            "rule": a.rule,
+            "package": a.package,
+            "reason": a.reason,
+            "details": a.details,
+        }
 
     def _serialize_vuln_result(self, result: VulnerabilityResult) -> list[dict]:
         items = []

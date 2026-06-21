@@ -1,0 +1,37 @@
+# dep-audit 策略配置示例
+# 许可证允许列表：这些许可证即使是 copyleft 也会被放行
+license_allowlist:
+  - "LGPL-2.1"
+
+# 许可证禁止列表：这些许可证会被额外标记为违规
+license_denylist: []
+
+# 风险严重度阈值：低于此严重度的漏洞会被自动放行
+# 可选值: critical, high, medium, low
+severity_threshold: "low"
+
+# 许可证风险阈值：低于此风险级别的许可证会被自动放行
+license_threshold: "medium"
+
+# 忽略的包：这些包的所有问题都会被忽略
+ignore_packages:
+  - "package-e"
+
+# 忽略的 CVE
+ignore_cves: []
+
+# 允许过期的包
+allowed_outdated_packages:
+  - "package-f"
+
+# 过期包宽限天数：新版本发布 N 天内不算过期
+outdated_grace_days: 0
+
+# CI 失败开关
+fail_on_high_vulnerability: true
+fail_on_circular_dependency: true
+fail_on_copyleft_license: true
+fail_on_outdated: false
+
+# 其他配置
+max_depth: 5

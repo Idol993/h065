@@ -91,24 +91,18 @@
 <body>
 <div class="container">
   <h1>🔍 Dependency Audit Report</h1>
-  <p class="timestamp">Generated: {{ timestamp }}</p>
+  <p class="timestamp">Generated: 20260621T180910Z</p>
 
-  {% if baseline_diff %}
-  <div class="summary-cards">
-    <div class="card new"><div class="count">{{ summary.new_violations or 0 }}</div><div class="label">⚠️ New Issues</div></div>
-    <div class="card existing"><div class="count">{{ summary.existing_violations or 0 }}</div><div class="label">🔶 Existing</div></div>
-    <div class="card fixed"><div class="count">{{ summary.fixed_violations or 0 }}</div><div class="label">✅ Fixed</div></div>
-  </div>
-  {% endif %}
+  
 
   <div class="summary-cards">
-    <div class="card critical"><div class="count">{{ summary.critical or 0 }}</div><div class="label">Critical Vulnerabilities</div></div>
-    <div class="card high"><div class="count">{{ summary.high or 0 }}</div><div class="label">High Vulnerabilities</div></div>
-    <div class="card medium"><div class="count">{{ summary.medium or 0 }}</div><div class="label">Medium Vulnerabilities</div></div>
-    <div class="card low"><div class="count">{{ summary.low or 0 }}</div><div class="label">Low Vulnerabilities</div></div>
-    <div class="card copyleft"><div class="count">{{ summary.copyleft or 0 }}</div><div class="label">Copyleft Licenses</div></div>
-    <div class="card circular"><div class="count">{{ summary.circular or 0 }}</div><div class="label">Circular Dependencies</div></div>
-    <div class="card outdated"><div class="count">{{ summary.outdated or 0 }}</div><div class="label">Outdated Packages</div></div>
+    <div class="card critical"><div class="count">0</div><div class="label">Critical Vulnerabilities</div></div>
+    <div class="card high"><div class="count">0</div><div class="label">High Vulnerabilities</div></div>
+    <div class="card medium"><div class="count">0</div><div class="label">Medium Vulnerabilities</div></div>
+    <div class="card low"><div class="count">0</div><div class="label">Low Vulnerabilities</div></div>
+    <div class="card copyleft"><div class="count">2</div><div class="label">Copyleft Licenses</div></div>
+    <div class="card circular"><div class="count">1</div><div class="label">Circular Dependencies</div></div>
+    <div class="card outdated"><div class="count">1</div><div class="label">Outdated Packages</div></div>
   </div>
 
   <div class="tabs">
@@ -118,128 +112,178 @@
     <div class="tab" onclick="switchTab('outdated')">Outdated</div>
     <div class="tab" onclick="switchTab('violations')">Violations</div>
     <div class="tab" onclick="switchTab('policy')">Policy Result</div>
-    {% if baseline_diff %}
-    <div class="tab" onclick="switchTab('diff')">Diff vs Baseline</div>
-    {% endif %}
+    
     <div class="tab" onclick="switchTab('graph')" data-graph-tab="true">Dependency Graph</div>
   </div>
 
   <div id="vulnerabilities" class="tab-content active">
     <div class="section">
-      <h2>Vulnerabilities ({{ vulnerability_data | length }})</h2>
-      {% if vulnerability_data %}
-      <table>
-        <thead><tr><th>Package</th><th>Version</th><th>Severity</th><th>CVE</th><th>CVSS</th><th>Title</th></tr></thead>
-        <tbody>
-        {% for v in vulnerability_data %}
-          <tr>
-            <td>{{ v.package }}</td>
-            <td>{{ v.version }}</td>
-            <td class="severity-{{ v.severity }}">{{ v.severity | upper }}</td>
-            <td>{{ v.cve_id }}</td>
-            <td>{{ v.cvss_score }}</td>
-            <td>{{ v.title }}</td>
-          </tr>
-        {% endfor %}
-        </tbody>
-      </table>
-      {% else %}
+      <h2>Vulnerabilities (0)</h2>
+      
       <p style="color:#00cc00; text-align:center; padding:20px;">✓ No vulnerabilities found</p>
-      {% endif %}
+      
     </div>
   </div>
 
   <div id="licenses" class="tab-content">
     <div class="section">
-      <h2>License Analysis ({{ license_data | length }})</h2>
-      {% if license_data %}
+      <h2>License Analysis (2)</h2>
+      
       <table>
         <thead><tr><th>Package</th><th>License</th><th>Risk Level</th><th>Copyleft</th></tr></thead>
         <tbody>
-        {% for l in license_data %}
+        
           <tr>
-            <td>{{ l.package }}</td>
-            <td>{{ l.license_id }}</td>
-            <td class="risk-{{ l.risk_level }}">{{ l.risk_level | upper }}</td>
-            <td class="{{ 'yes' if l.is_copyleft else 'no' }}">{{ '✗ YES' if l.is_copyleft else '✓ NO' }}</td>
+            <td>package-a</td>
+            <td>GPL-3.0</td>
+            <td class="risk-high">HIGH</td>
+            <td class="yes">✗ YES</td>
           </tr>
-        {% endfor %}
+        
+          <tr>
+            <td>package-d</td>
+            <td>AGPL-3.0</td>
+            <td class="risk-high">HIGH</td>
+            <td class="yes">✗ YES</td>
+          </tr>
+        
         </tbody>
       </table>
-      {% else %}
-      <p style="color:#aaa; text-align:center; padding:20px;">No license data available</p>
-      {% endif %}
+      
     </div>
   </div>
 
   <div id="circular" class="tab-content">
     <div class="section">
-      <h2>Circular Dependencies ({{ circular_data | length }})</h2>
-      {% if circular_data %}
-        {% for c in circular_data %}
+      <h2>Circular Dependencies (1)</h2>
+      
+        
           <div class="cycle-path">
-            <strong>Cycle #{{ loop.index }} (length: {{ c.length }})</strong><br>
-            {{ c.cycle | join(' → ') }}
+            <strong>Cycle #1 (length: 3)</strong><br>
+            package-c → package-a → package-b → package-c
           </div>
-        {% endfor %}
-      {% else %}
-      <p style="color:#00cc00; text-align:center; padding:20px;">✓ No circular dependencies found</p>
-      {% endif %}
+        
+      
     </div>
   </div>
 
   <div id="outdated" class="tab-content">
     <div class="section">
-      <h2>Outdated Packages ({{ outdated_data | length }})</h2>
-      {% if outdated_data %}
+      <h2>Outdated Packages (1)</h2>
+      
       <table>
         <thead><tr><th>Package</th><th>Current</th><th>Latest</th><th>Ecosystem</th></tr></thead>
         <tbody>
-        {% for o in outdated_data %}
+        
           <tr>
-            <td>{{ o.package }}</td>
-            <td style="color:#ff4444">{{ o.current }}</td>
-            <td style="color:#00cc00">{{ o.latest }}</td>
-            <td>{{ o.ecosystem }}</td>
+            <td>package-h</td>
+            <td style="color:#ff4444">2.1.0</td>
+            <td style="color:#00cc00">99.0.0</td>
+            <td>npm</td>
           </tr>
-        {% endfor %}
+        
         </tbody>
       </table>
-      {% else %}
-      <p style="color:#00cc00; text-align:center; padding:20px;">✓ All packages are up to date</p>
-      {% endif %}
+      
     </div>
   </div>
 
   <div id="violations" class="tab-content">
     <div class="section">
-      <h2>Policy Violations ({{ violations | length }})</h2>
-      {% if violations %}
-        {% for v in violations %}
-          <div class="violation-card type-{{ v.type }}">
+      <h2>Policy Violations (4)</h2>
+      
+        
+          <div class="violation-card type-copyleft_license">
             <div class="violation-header">
-              <span class="violation-pkg">{{ v.package }}</span>
-              <span class="violation-type">{{ v.type | upper }}</span>
+              <span class="violation-pkg">package-a</span>
+              <span class="violation-type">COPYLEFT_LICENSE</span>
             </div>
             <div class="violation-reason">
-              <span class="severity-{{ v.severity }}">[{{ v.severity | upper }}]</span>
-              {{ v.reason }}
+              <span class="severity-high">[HIGH]</span>
+              Copyleft license 'GPL-3.0' has high risk
             </div>
-            {% if v.version %}
-            <div class="violation-details">Version: {{ v.version }}</div>
-            {% endif %}
-            {% if v.details %}
+            
+            <div class="violation-details">Version: 1.0.0</div>
+            
+            
             <div class="violation-details">
-              {% for k, val in v.details.items() %}
-              <strong>{{ k }}:</strong> {{ val }} &nbsp;
-              {% endfor %}
+              
+              <strong>license_id:</strong> GPL-3.0 &nbsp;
+              
+              <strong>is_copyleft:</strong> True &nbsp;
+              
             </div>
-            {% endif %}
+            
           </div>
-        {% endfor %}
-      {% else %}
-      <p style="color:#00cc00; text-align:center; padding:20px;">✓ No policy violations</p>
-      {% endif %}
+        
+          <div class="violation-card type-copyleft_license">
+            <div class="violation-header">
+              <span class="violation-pkg">package-d</span>
+              <span class="violation-type">COPYLEFT_LICENSE</span>
+            </div>
+            <div class="violation-reason">
+              <span class="severity-high">[HIGH]</span>
+              Copyleft license 'AGPL-3.0' has high risk
+            </div>
+            
+            <div class="violation-details">Version: 4.0.0</div>
+            
+            
+            <div class="violation-details">
+              
+              <strong>license_id:</strong> AGPL-3.0 &nbsp;
+              
+              <strong>is_copyleft:</strong> True &nbsp;
+              
+            </div>
+            
+          </div>
+        
+          <div class="violation-card type-circular_dependency">
+            <div class="violation-header">
+              <span class="violation-pkg">package-c</span>
+              <span class="violation-type">CIRCULAR_DEPENDENCY</span>
+            </div>
+            <div class="violation-reason">
+              <span class="severity-medium">[MEDIUM]</span>
+              Circular dependency detected: package-c → package-a → package-b → package-c
+            </div>
+            
+            
+            <div class="violation-details">
+              
+              <strong>cycle:</strong> ['package-c', 'package-a', 'package-b', 'package-c'] &nbsp;
+              
+              <strong>length:</strong> 3 &nbsp;
+              
+            </div>
+            
+          </div>
+        
+          <div class="violation-card type-outdated_package">
+            <div class="violation-header">
+              <span class="violation-pkg">package-h</span>
+              <span class="violation-type">OUTDATED_PACKAGE</span>
+            </div>
+            <div class="violation-reason">
+              <span class="severity-low">[LOW]</span>
+              Package is outdated: 2.1.0 → 99.0.0
+            </div>
+            
+            <div class="violation-details">Version: 2.1.0</div>
+            
+            
+            <div class="violation-details">
+              
+              <strong>current_version:</strong> 2.1.0 &nbsp;
+              
+              <strong>latest_version:</strong> 99.0.0 &nbsp;
+              
+            </div>
+            
+          </div>
+        
+      
     </div>
   </div>
 
@@ -247,126 +291,146 @@
     <div class="section">
       <h2>Policy Result</h2>
 
-      {% if policy_config %}
+      
       <div class="policy-config-box">
         <h4>📋 Active Policy Configuration</h4>
-        <pre>{{ policy_config | tojson(indent=2) }}</pre>
+        <pre>{
+  "allowed_outdated_packages": [
+    "package-f"
+  ],
+  "fail_on_circular_dependency": true,
+  "fail_on_copyleft_license": true,
+  "fail_on_high_vulnerability": true,
+  "fail_on_outdated": false,
+  "ignore_cves": [],
+  "ignore_packages": [
+    "package-e"
+  ],
+  "license_allowlist": [
+    "LGPL-2.1"
+  ],
+  "license_denylist": [],
+  "license_threshold": "medium",
+  "maven_api_url": "https://search.maven.org/solrsearch/select",
+  "max_depth": 5,
+  "npm_api_url": "https://registry.npmjs.org",
+  "oss_index_url": "https://ossindex.sonatype.org/api/v3/component-report",
+  "outdated_grace_days": 0,
+  "pypi_api_url": "https://pypi.org/pypi",
+  "severity_threshold": "low"
+}</pre>
       </div>
-      {% endif %}
+      
 
-      <h3 style="color:#00d4ff; margin-bottom:10px;">Triggered Rules ({{ violations | length }})</h3>
-      {% if violations %}
+      <h3 style="color:#00d4ff; margin-bottom:10px;">Triggered Rules (4)</h3>
+      
       <table>
         <thead><tr><th>Type</th><th>Package</th><th>Severity</th><th>Reason</th></tr></thead>
         <tbody>
-        {% for v in violations %}
+        
           <tr>
-            <td class="severity-{{ v.severity }}">{{ v.type | replace('_', ' ') | title }}</td>
-            <td>{{ v.package }}</td>
-            <td class="severity-{{ v.severity }}">{{ v.severity | upper }}</td>
-            <td>{{ v.reason }}</td>
+            <td class="severity-high">Copyleft License</td>
+            <td>package-a</td>
+            <td class="severity-high">HIGH</td>
+            <td>Copyleft license 'GPL-3.0' has high risk</td>
           </tr>
-        {% endfor %}
+        
+          <tr>
+            <td class="severity-high">Copyleft License</td>
+            <td>package-d</td>
+            <td class="severity-high">HIGH</td>
+            <td>Copyleft license 'AGPL-3.0' has high risk</td>
+          </tr>
+        
+          <tr>
+            <td class="severity-medium">Circular Dependency</td>
+            <td>package-c</td>
+            <td class="severity-medium">MEDIUM</td>
+            <td>Circular dependency detected: package-c → package-a → package-b → package-c</td>
+          </tr>
+        
+          <tr>
+            <td class="severity-low">Outdated Package</td>
+            <td>package-h</td>
+            <td class="severity-low">LOW</td>
+            <td>Package is outdated: 2.1.0 → 99.0.0</td>
+          </tr>
+        
         </tbody>
       </table>
-      {% else %}
-      <p style="color:#00cc00; text-align:center; padding:20px;">✓ No rules triggered</p>
-      {% endif %}
+      
 
-      <h3 style="color:#00d4ff; margin-top:25px; margin-bottom:10px;">Policy Actions ({{ policy_actions | length }})</h3>
-      {% if policy_actions %}
-        {% for a in policy_actions %}
-          <div class="action-card action-{{ a.action }}">
+      <h3 style="color:#00d4ff; margin-top:25px; margin-bottom:10px;">Policy Actions (7)</h3>
+      
+        
+          <div class="action-card action-allow">
             <div>
-              <span class="action-rule">{{ a.rule | replace('_', ' ') | title }}</span>
-              <span style="color:#888; margin-left:10px;">[{{ a.action | upper }}]</span>
+              <span class="action-rule">License Threshold</span>
+              <span style="color:#888; margin-left:10px;">[ALLOW]</span>
             </div>
-            <div class="action-pkg">Package: {{ a.package }}</div>
-            <div class="action-reason">{{ a.reason }}</div>
+            <div class="action-pkg">Package: package-b</div>
+            <div class="action-reason">License risk low below threshold</div>
           </div>
-        {% endfor %}
-      {% else %}
-      <p style="color:#aaa; text-align:center; padding:20px;">No policy actions applied</p>
-      {% endif %}
+        
+          <div class="action-card action-allow">
+            <div>
+              <span class="action-rule">License Threshold</span>
+              <span style="color:#888; margin-left:10px;">[ALLOW]</span>
+            </div>
+            <div class="action-pkg">Package: package-c</div>
+            <div class="action-reason">License risk low below threshold</div>
+          </div>
+        
+          <div class="action-card action-ignore">
+            <div>
+              <span class="action-rule">Ignore Packages</span>
+              <span style="color:#888; margin-left:10px;">[IGNORE]</span>
+            </div>
+            <div class="action-pkg">Package: package-e</div>
+            <div class="action-reason">Package 'package-e' is in ignore list</div>
+          </div>
+        
+          <div class="action-card action-allow">
+            <div>
+              <span class="action-rule">License Threshold</span>
+              <span style="color:#888; margin-left:10px;">[ALLOW]</span>
+            </div>
+            <div class="action-pkg">Package: package-f</div>
+            <div class="action-reason">License risk low below threshold</div>
+          </div>
+        
+          <div class="action-card action-allow">
+            <div>
+              <span class="action-rule">License Allowlist</span>
+              <span style="color:#888; margin-left:10px;">[ALLOW]</span>
+            </div>
+            <div class="action-pkg">Package: package-g</div>
+            <div class="action-reason">License 'LGPL-2.1' is in allowlist</div>
+          </div>
+        
+          <div class="action-card action-allow">
+            <div>
+              <span class="action-rule">License Threshold</span>
+              <span style="color:#888; margin-left:10px;">[ALLOW]</span>
+            </div>
+            <div class="action-pkg">Package: package-h</div>
+            <div class="action-reason">License risk low below threshold</div>
+          </div>
+        
+          <div class="action-card action-allow">
+            <div>
+              <span class="action-rule">Allowed Outdated Packages</span>
+              <span style="color:#888; margin-left:10px;">[ALLOW]</span>
+            </div>
+            <div class="action-pkg">Package: package-f</div>
+            <div class="action-reason">Package 'package-f' is allowed to be outdated</div>
+          </div>
+        
+      
     </div>
   </div>
 
-  {% if baseline_diff %}
-  <div id="diff" class="tab-content">
-    <div class="section">
-      <h2>Diff vs Baseline</h2>
-
-      <div class="diff-section">
-        <h3><span class="badge badge-new">NEW</span> New Violations ({{ baseline_diff.new_violations | length }})</h3>
-        {% if baseline_diff.new_violations %}
-          {% for v in baseline_diff.new_violations %}
-            <div class="violation-card type-{{ v.type }}">
-              <div class="violation-header">
-                <span class="violation-pkg status-new">{{ v.package }}</span>
-                <span class="violation-type">{{ v.type | upper }}</span>
-              </div>
-              <div class="violation-reason">
-                <span class="severity-{{ v.severity }}">[{{ v.severity | upper }}]</span>
-                {{ v.reason }}
-              </div>
-              {% if v.version %}
-              <div class="violation-details">Version: {{ v.version }}</div>
-              {% endif %}
-            </div>
-          {% endfor %}
-        {% else %}
-        <p style="color:#00cc00; padding:10px;">✓ No new violations</p>
-        {% endif %}
-      </div>
-
-      <div class="diff-section">
-        <h3><span class="badge badge-existing">EXISTING</span> Existing Violations ({{ baseline_diff.existing_violations | length }})</h3>
-        {% if baseline_diff.existing_violations %}
-          {% for v in baseline_diff.existing_violations %}
-            <div class="violation-card type-{{ v.type }}">
-              <div class="violation-header">
-                <span class="violation-pkg status-existing">{{ v.package }}</span>
-                <span class="violation-type">{{ v.type | upper }}</span>
-              </div>
-              <div class="violation-reason">
-                <span class="severity-{{ v.severity }}">[{{ v.severity | upper }}]</span>
-                {{ v.reason }}
-              </div>
-              {% if v.version %}
-              <div class="violation-details">Version: {{ v.version }}</div>
-              {% endif %}
-            </div>
-          {% endfor %}
-        {% else %}
-        <p style="color:#aaa; padding:10px;">No existing violations</p>
-        {% endif %}
-      </div>
-
-      <div class="diff-section">
-        <h3><span class="badge badge-fixed">FIXED</span> Fixed Violations ({{ baseline_diff.fixed_violations | length }})</h3>
-        {% if baseline_diff.fixed_violations %}
-          {% for v in baseline_diff.fixed_violations %}
-            <div class="violation-card type-{{ v.type }}">
-              <div class="violation-header">
-                <span class="violation-pkg status-fixed">{{ v.package }}</span>
-                <span class="violation-type">{{ v.type | upper }}</span>
-              </div>
-              <div class="violation-reason">
-                <span class="severity-{{ v.severity }}">[{{ v.severity | upper }}]</span>
-                {{ v.reason }}
-              </div>
-              {% if v.version %}
-              <div class="violation-details">Version: {{ v.version }}</div>
-              {% endif %}
-            </div>
-          {% endfor %}
-        {% else %}
-        <p style="color:#aaa; padding:10px;">No fixed violations</p>
-        {% endif %}
-      </div>
-    </div>
-  </div>
-  {% endif %}
+  
 
   <div id="graph" class="tab-content">
     <div class="section">
@@ -396,7 +460,7 @@ function initGraph() {
   }
   graphInitialized = true;
 
-  var graphData = {{ graph_data | tojson }};
+  var graphData = {"links": [{"is_cycle": true, "source": "package-a", "target": "package-b"}, {"is_cycle": true, "source": "package-b", "target": "package-c"}, {"is_cycle": true, "source": "package-c", "target": "package-a"}, {"is_cycle": false, "source": "package-a", "target": "package-a"}, {"is_cycle": true, "source": "package-b", "target": "package-c"}, {"is_cycle": true, "source": "package-c", "target": "package-a"}, {"is_cycle": true, "source": "package-a", "target": "package-b"}, {"is_cycle": false, "source": "package-b", "target": "package-b"}, {"is_cycle": true, "source": "package-c", "target": "package-a"}, {"is_cycle": true, "source": "package-a", "target": "package-b"}, {"is_cycle": true, "source": "package-b", "target": "package-c"}, {"is_cycle": false, "source": "package-c", "target": "package-c"}], "nodes": [{"group": "npm", "id": "package-a", "is_cycle": true, "risk": "low", "vulnerabilities": 0}, {"group": "npm", "id": "package-d", "is_cycle": false, "risk": "low", "vulnerabilities": 0}, {"group": "npm", "id": "package-h", "is_cycle": false, "risk": "low", "vulnerabilities": 0}]};
   var nodes = graphData.nodes || [];
   var links = graphData.links || [];
 

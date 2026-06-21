@@ -9,9 +9,14 @@ DEFAULT_CONFIG = {
     "ignore_cves": [],
     "severity_threshold": "low",
     "license_threshold": "high",
+    "license_allowlist": [],
+    "license_denylist": [],
+    "allowed_outdated_packages": [],
+    "outdated_grace_days": 0,
     "fail_on_high_vulnerability": True,
     "fail_on_circular_dependency": True,
     "fail_on_copyleft_license": True,
+    "fail_on_outdated": False,
     "max_depth": 5,
     "oss_index_url": "https://ossindex.sonatype.org/api/v3/component-report",
     "pypi_api_url": "https://pypi.org/pypi",
@@ -49,6 +54,30 @@ class ConfigLoader:
         return self._config.get("ignore_cves", [])
 
     @property
+    def license_allowlist(self) -> list:
+        return self._config.get("license_allowlist", [])
+
+    @property
+    def license_denylist(self) -> list:
+        return self._config.get("license_denylist", [])
+
+    @property
+    def severity_threshold(self) -> str:
+        return self._config.get("severity_threshold", "low")
+
+    @property
+    def license_threshold(self) -> str:
+        return self._config.get("license_threshold", "high")
+
+    @property
+    def allowed_outdated_packages(self) -> list:
+        return self._config.get("allowed_outdated_packages", [])
+
+    @property
+    def outdated_grace_days(self) -> int:
+        return self._config.get("outdated_grace_days", 0)
+
+    @property
     def fail_on_high_vulnerability(self) -> bool:
         return self._config.get("fail_on_high_vulnerability", True)
 
@@ -59,6 +88,10 @@ class ConfigLoader:
     @property
     def fail_on_copyleft_license(self) -> bool:
         return self._config.get("fail_on_copyleft_license", True)
+
+    @property
+    def fail_on_outdated(self) -> bool:
+        return self._config.get("fail_on_outdated", False)
 
     @property
     def max_depth(self) -> int:
@@ -79,3 +112,6 @@ class ConfigLoader:
     @property
     def maven_api_url(self) -> str:
         return self._config.get("maven_api_url", DEFAULT_CONFIG["maven_api_url"])
+
+    def to_dict(self) -> dict:
+        return dict(self._config)

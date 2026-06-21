@@ -1,0 +1,196 @@
+{
+  "violations": [
+    {
+      "type": "copyleft_license",
+      "package": "package-a",
+      "version": "1.0.0",
+      "severity": "high",
+      "reason": "Copyleft license 'GPL-3.0' has high risk",
+      "details": {
+        "license_id": "GPL-3.0",
+        "is_copyleft": true
+      }
+    },
+    {
+      "type": "copyleft_license",
+      "package": "package-d",
+      "version": "4.0.0",
+      "severity": "high",
+      "reason": "Copyleft license 'AGPL-3.0' has high risk",
+      "details": {
+        "license_id": "AGPL-3.0",
+        "is_copyleft": true
+      }
+    },
+    {
+      "type": "circular_dependency",
+      "package": "package-c",
+      "version": "",
+      "severity": "medium",
+      "reason": "Circular dependency detected: package-c → package-a → package-b → package-c",
+      "details": {
+        "cycle": [
+          "package-c",
+          "package-a",
+          "package-b",
+          "package-c"
+        ],
+        "length": 3
+      }
+    },
+    {
+      "type": "outdated_package",
+      "package": "package-h",
+      "version": "2.1.0",
+      "severity": "low",
+      "reason": "Package is outdated: 2.1.0 → 99.0.0",
+      "details": {
+        "current_version": "2.1.0",
+        "latest_version": "99.0.0"
+      }
+    }
+  ],
+  "vulnerabilities": [],
+  "licenses": [
+    {
+      "package": "package-a",
+      "version": "1.0.0",
+      "license_id": "GPL-3.0",
+      "risk_level": "high",
+      "is_copyleft": true
+    },
+    {
+      "package": "package-d",
+      "version": "4.0.0",
+      "license_id": "AGPL-3.0",
+      "risk_level": "high",
+      "is_copyleft": true
+    }
+  ],
+  "circular_dependencies": [
+    {
+      "cycle": [
+        "package-c",
+        "package-a",
+        "package-b",
+        "package-c"
+      ],
+      "length": 3
+    }
+  ],
+  "outdated": [
+    {
+      "package": "package-h",
+      "current_version": "2.1.0",
+      "latest_version": "99.0.0",
+      "ecosystem": "npm",
+      "is_outdated": true
+    }
+  ],
+  "metadata": {
+    "timestamp": "20260621T180910Z",
+    "tool_version": "1.0.0",
+    "summary": {
+      "total_violations": 4,
+      "total_vulnerabilities": 0,
+      "critical": 0,
+      "high": 0,
+      "medium": 0,
+      "low": 0,
+      "total_licenses": 2,
+      "copyleft_licenses": 2,
+      "total_circular_dependencies": 1,
+      "total_outdated": 1
+    }
+  },
+  "policy_actions": [
+    {
+      "action": "allow",
+      "rule": "license_threshold",
+      "package": "package-b",
+      "reason": "License risk low below threshold",
+      "details": {
+        "license_id": "MIT",
+        "risk_level": "low"
+      }
+    },
+    {
+      "action": "allow",
+      "rule": "license_threshold",
+      "package": "package-c",
+      "reason": "License risk low below threshold",
+      "details": {
+        "license_id": "MIT",
+        "risk_level": "low"
+      }
+    },
+    {
+      "action": "ignore",
+      "rule": "ignore_packages",
+      "package": "package-e",
+      "reason": "Package 'package-e' is in ignore list",
+      "details": {}
+    },
+    {
+      "action": "allow",
+      "rule": "license_threshold",
+      "package": "package-f",
+      "reason": "License risk low below threshold",
+      "details": {
+        "license_id": "MIT",
+        "risk_level": "low"
+      }
+    },
+    {
+      "action": "allow",
+      "rule": "license_allowlist",
+      "package": "package-g",
+      "reason": "License 'LGPL-2.1' is in allowlist",
+      "details": {
+        "license_id": "LGPL-2.1"
+      }
+    },
+    {
+      "action": "allow",
+      "rule": "license_threshold",
+      "package": "package-h",
+      "reason": "License risk low below threshold",
+      "details": {
+        "license_id": "MIT",
+        "risk_level": "low"
+      }
+    },
+    {
+      "action": "allow",
+      "rule": "allowed_outdated_packages",
+      "package": "package-f",
+      "reason": "Package 'package-f' is allowed to be outdated",
+      "details": {}
+    }
+  ],
+  "policy_config": {
+    "ignore_packages": [
+      "package-e"
+    ],
+    "ignore_cves": [],
+    "severity_threshold": "low",
+    "license_threshold": "medium",
+    "license_allowlist": [
+      "LGPL-2.1"
+    ],
+    "license_denylist": [],
+    "allowed_outdated_packages": [
+      "package-f"
+    ],
+    "outdated_grace_days": 0,
+    "fail_on_high_vulnerability": true,
+    "fail_on_circular_dependency": true,
+    "fail_on_copyleft_license": true,
+    "fail_on_outdated": false,
+    "max_depth": 5,
+    "oss_index_url": "https://ossindex.sonatype.org/api/v3/component-report",
+    "pypi_api_url": "https://pypi.org/pypi",
+    "npm_api_url": "https://registry.npmjs.org",
+    "maven_api_url": "https://search.maven.org/solrsearch/select"
+  }
+}
